@@ -375,7 +375,7 @@ const APP = `(function () {
   function heat() {
     var s = byId('heat'), list = scope(), keys = days(84), vals = perDay(list, keys, METRICS.time.pick), max = Math.max.apply(null, vals.concat([0]))
     var r = 17, w = Math.sqrt(3) * r, left = 44, top = r + 2, firstDow = new Date(now - 83 * DAY).getDay(), cols = Math.ceil((84 + firstDow) / 7); s.textContent = ''
-    blur(svg('defs', {}, s), 'hglow', 6)
+    svg('feGaussianBlur', { stdDeviation: 6 }, svg('filter', { id: 'hglow', x: '-150%', y: '-150%', width: '400%', height: '400%' }, svg('defs', {}, s)))
     var cells = keys.map(function (k, i) {
       var pos = i + firstDow, row = pos % 7
       return { k: k, v: vals[i], a: max ? vals[i] / max : 0, cx: left + Math.floor(pos / 7) * w + (row % 2 ? w / 2 : 0), cy: top + row * r * 1.5 }
@@ -393,7 +393,7 @@ const APP = `(function () {
     svg('text', { x: end - 4 * 15 - 14, y: ly + 4, 'text-anchor': 'end', 'class': 'day' }, s).textContent = 'Less'
     ;[.1, .3, .55, .8, 1].forEach(function (a, i) { svg('path', { d: hex(end - (4 - i) * 15, ly, 6.5), fill: heatColor(a) }, s) })
     svg('text', { x: right, y: ly + 4, 'text-anchor': 'end', 'class': 'day' }, s).textContent = 'More'
-    s.setAttribute('viewBox', '0 0 ' + Math.ceil(right + 2) + ' ' + Math.ceil(ly + 10))
+    s.setAttribute('viewBox', '-28 -28 ' + (Math.ceil(right + 2) + 56) + ' ' + (Math.ceil(ly + 10) + 56))
     // Two heroes from the same twelve weeks: on how many days agents worked, and the run of days up to today.
     var active = vals.filter(function (v) { return v > 0 }).length, run = 0, longest = 0, streak = 0
     vals.forEach(function (v) { run = v > 0 ? run + 1 : 0; longest = Math.max(longest, run) })
@@ -538,11 +538,12 @@ export function boardHtml(tasks: Task[], now: number, extra: BoardExtra = { even
 <section class="card chart-card"><div class="chart-head"><div><div class="label" id="chart-sub"></div><div class="big num" id="chart-total"></div></div>
 <div class="seg" role="group" aria-label="Metric">${seg('metric', [['time', 'Agent time'], ['cost', 'Cost'], ['tokens', 'Tokens']], 'time')}</div></div>
 <div class="chart-wrap"><svg id="stream" role="img" aria-label="Per project and day"></svg><div class="tip" id="tip" hidden></div></div><div class="legend" id="legend"></div></section>
+${sectionHtml('projects')}
 <section class="card heat"><div class="heat-head"><h3>Activity</h3><div class="sub">Agent time per day, last 12 weeks</div></div><div class="heat-body"><div class="heat-map"><svg id="heat" role="img" aria-label="Agent time per day, last 12 weeks"></svg></div><div class="heat-side">
 <div class="heroes"><div><div class="hero-label"><i style="color:#5fe08a">✦</i>Active days</div><div class="hero-value num" id="h-active"></div><div class="hero-sub" id="h-active-sub"></div></div>
 <div><div class="hero-label"><i style="color:#ffd166">◆</i>Streak</div><div class="hero-value num" id="h-streak"></div><div class="hero-sub" id="h-streak-sub"></div></div></div><div id="facts"></div></div></div></section>
 </div>
-${['projects', 'context', 'reuse', 'router', 'plans', 'runs', 'extras'].map(id => `<div class="page" data-page="${id}">${sectionHtml(id)}</div>`).join('\n')}
+${['context', 'reuse', 'router', 'plans', 'runs', 'extras'].map(id => `<div class="page" data-page="${id}">${sectionHtml(id)}</div>`).join('\n')}
 <footer>Measured by ponytail's band in Claude Code. Cost is the API-priced cost Claude Code reports (/cost), not a bill. Nothing here is estimated.</footer>
 </main></div>
 <dialog id="export-dialog"><div class="dlg-head"><b>Export all</b><div class="dlg-actions"><button type="button" class="btn" id="export-raw-dlg">Raw data</button><button type="button" class="btn" id="export-pdf">PDF</button><button type="button" class="btn" id="export-md">Markdown</button><button type="button" class="btn" id="export-json">JSON</button><button type="button" class="btn" id="export-copy">Copy</button><button type="button" class="btn" id="export-close">Close</button></div></div><div class="dlg-body"><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label><label class="li"><input type="checkbox" id="with-titles"><span>Include session titles (the first words of each prompt)</span></label></div></dialog>

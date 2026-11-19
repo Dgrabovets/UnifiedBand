@@ -20,9 +20,10 @@ export const sectionHtml = (id: string) => {
   return `<section class="card sec" id="sec-${id}"><div class="sec-head"><div><h3>${title}</h3><div class="sub">${sub}</div></div><div class="exp"><button type="button" class="btn sm" data-export="${id}" aria-haspopup="menu">Export ▾</button></div></div><div class="sec-body" id="b-${id}"></div></section>`
 }
 
-export const SECTION_NAV = SECTIONS.map(([id, title]) => `<button type="button" class="nav-item" data-tab="${id}"><span class="name">${title}</span></button>`).join('')
+export const SECTION_NAV = SECTIONS.filter(([id]) => id !== 'projects').map(([id, title]) => `<button type="button" class="nav-item" data-tab="${id}"><span class="name">${title}</span></button>`).join('')
 
 export const SECTIONS_CSS = `
+#heat{overflow:visible}
 .page{display:none;flex-direction:column;gap:14px}.page.on{display:flex}
 .heat-head{margin-bottom:6px}.heat-body{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:32px;align-items:start}.heat-map{min-width:0}#heat{max-width:520px;margin:0 auto}.heat-side{min-width:0}.heat .heroes{margin-top:4px}
 .picker{position:relative}.picker .menu{left:0;right:auto;min-width:220px}.menu .note{padding:6px 10px;margin:0}
@@ -413,11 +414,20 @@ function showPage(id) {
 }
 // PDF through the browser's print dialog ("Save as PDF"): only the chosen pages, in the light theme, put back afterwards.
 function printIds(ids) {
+  ids = ids.map(function (x) { return x === 'projects' ? 'overview' : x })
   var pages = document.querySelectorAll('.page'), theme = document.documentElement.getAttribute('data-theme')
   pages.forEach(function (p) { p.classList.toggle('print-skip', ids.indexOf(p.getAttribute('data-page')) < 0) })
   document.documentElement.setAttribute('data-theme', 'light')
-  window.onafterprint = function () { pages.forEach(function (p) { p.classList.remove('print-skip') }); document.documentElement.setAttribute('data-theme', theme); window.onafterprint = null }
+  var restored = false
+  function restore() {
+    if (restored) return
+    restored = true
+    pages.forEach(function (p) { p.classList.remove('print-skip') }); document.documentElement.setAttribute('data-theme', theme); window.onafterprint = null
+  }
+  // afterprint is the normal way back; the timer is a safety net for a browser that never fires it.
+  window.onafterprint = restore
   window.print()
+  setTimeout(restore, 1500)
 }
 
 function renderSections() { drawPicker(); drawOverviewExport(); drawProjects(); drawContext(); drawReuse(); drawRouter(); drawPlans(); drawRuns(); drawExtras() }
