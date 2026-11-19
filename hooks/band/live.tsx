@@ -101,7 +101,8 @@ export async function afterPrompt($: EngineInterface, e: { text: string }) {
   await logEvent($, { t: 'prompt', ...(await where($)), words, neg: words <= 6 && NEGATIVE.test(text) })
 }
 
-export async function afterTurn($: EngineInterface, e: TurnCompleteInput, options: Options, b: Band) {
+// `tailCache` is the cache share read from the transcript, for an engine whose turn event carries no usage.
+export async function afterTurn($: EngineInterface, e: TurnCompleteInput, options: Options, b: Band, tailCache?: number) {
   await refresh($, options)
   // A subagent's turn is not the session's last turn; the journal keeps its size for the Extras section.
   if (e.agentId !== undefined) {
@@ -110,8 +111,9 @@ export async function afterTurn($: EngineInterface, e: TurnCompleteInput, option
   }
   const u = e.usage
   const total = u ? u.input + u.cacheRead + u.cacheWrite : 0
+  const cache = total > 0 && u ? Math.round((u.cacheRead / total) * 100) : tailCache
   const at = await $.clock.now()
-  await update($, live, l => ({ ...l, lastTurn: { ms: e.durationMs, cache: total > 0 && u ? Math.round((u.cacheRead / total) * 100) : undefined, at } }))
+  await update($, live, l => ({ ...l, lastTurn: { ms: e.durationMs, cache, at } }))
 
   const l = await read($, live)
   const w = { session: b.session, project: baseName(l.root), root: l.root, ts: at }
@@ -133,7 +135,7 @@ export async function afterTurn($: EngineInterface, e: TurnCompleteInput, option
     seven: seven?.percentUsed,
     sevenReset: seven?.resetsAt,
     compactions: l.compactions,
-    cache: total > 0 && u ? Math.round((u.cacheRead / total) * 100) : undefined,
+    cache,
     tests: b.tests.state,
     reused: b.reused.length,
     created: b.created.length,

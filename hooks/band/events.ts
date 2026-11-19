@@ -18,11 +18,13 @@ export async function bandDir($: EngineInterface) {
   return `${(await $.env.get('XDG_CONFIG_HOME')) ?? `${home}/.config`}/ponytail/band`
 }
 
-// shortcut: reads the month's file and writes it back whole; a month of turns stays far under the 4 MiB read limit.
+// One file per session and day, so two sessions never write the same file and a file stays small.
+// A read that fails on a file that exists must not turn into an overwrite: the event is dropped instead.
 export async function logEvent($: EngineInterface, ev: Ev) {
-  const file = `${await bandDir($)}/events-${new Date(ev.ts).toISOString().slice(0, 7)}.jsonl`
-  const old = await $.fs.read(file).catch(() => '')
-  await $.fs.write(file, `${old}${JSON.stringify(ev)}\n`)
+  const name = `events-${new Date(ev.ts).toISOString().slice(0, 10)}-${(ev.session.slice(0, 8) || 'none').replace(/[^\w-]/g, '_')}.jsonl`
+  const file = `${await bandDir($)}/${name}`
+  const old = (await $.fs.exists(file)) ? await $.fs.read(file).catch(() => undefined) : ''
+  if (old !== undefined) await $.fs.write(file, `${old}${JSON.stringify(ev)}\n`)
 }
 
 // What the Board adds to the task ledger: the journal, the router's decisions and the owner's board.json.
@@ -30,7 +32,7 @@ export async function logEvent($: EngineInterface, ev: Ev) {
 export async function boardExtra($: EngineInterface) {
   const dir = await bandDir($)
   const events: unknown[] = []
-  for (const f of (await $.fs.list(dir).catch(() => [])).filter(x => x.kind === 'file' && /^events-\d{4}-\d{2}\.jsonl$/.test(x.name)).sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const f of (await $.fs.list(dir).catch(() => [])).filter(x => x.kind === 'file' && /^events-\d{4}-\d{2}(-\d{2}-[\w-]+)?\.jsonl$/.test(x.name)).sort((a, b) => a.name.localeCompare(b.name))) {
     for (const line of (await $.fs.read(`${dir}/${f.name}`).catch(() => '')).split('\n')) {
       try {
         if (line !== '') events.push(JSON.parse(line))
@@ -49,6 +51,7 @@ export async function boardExtra($: EngineInterface) {
         return []
       }
     })
-  const config = JSON.parse((await $.fs.read(`${dir}/board.json`).catch(() => '{}')) || '{}')
-  return { events, audit, config }
+  // A broken board.json costs only the config, not the journal and the router log.
+  const config = await $.fs.read(`${dir}/board.json`).then(JSON.parse).catch(() => ({}))
+  return { events: events.sort((a, b) => ((a as Ev).ts ?? 0) - ((b as Ev).ts ?? 0)), audit, config }
 }

@@ -17,7 +17,7 @@ export const elapsed = (ms: number) => {
 }
 
 export const fmtTokens = (n: number) =>
-  n < 1000 ? `${n}` : n < 1e6 ? `${+(n / 1e3).toFixed(1)}k` : `${+(n / 1e6).toFixed(1)}M`
+  n < 1000 ? `${n}` : n < 1e6 ? `${+(n / 1e3).toFixed(1)}k` : n < 1e9 ? `${+(n / 1e6).toFixed(1)}M` : `${+(n / 1e9).toFixed(1)}B`
 
 export type Task = {
   key: string
@@ -124,12 +124,20 @@ const CSS = `:root{color-scheme:dark;--bg:#060606;--panel:#0c0c0c;--card:linear-
 main{padding:26px 32px 56px;min-width:0;max-width:1400px;width:100%;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:22px;flex-wrap:wrap}
 .crumb{color:var(--faint);font-size:13px}.crumb b{color:var(--muted);font-weight:500}
-h1{margin:2px 0 0;font-size:26px;font-weight:650;letter-spacing:-.02em}.top p{margin:2px 0 0;color:var(--muted)}
+h1{margin:2px 0 0;font-size:26px;font-weight:650;letter-spacing:-.02em}.top p{margin:8px 0 0;color:var(--text);opacity:.78;font-size:14px;font-weight:500}
 .actions{display:flex;gap:10px;align-items:center}
 .seg{display:inline-flex;background:var(--track);border:1px solid var(--line);border-radius:12px;padding:3px;flex:none}
 .seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;padding:6px 12px;border-radius:9px;cursor:pointer}
 .seg button.on{background:var(--segOn);color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px var(--line2)}
-.btn{border:1px solid var(--line2);background:var(--track);color:var(--text);font:inherit;font-size:13px;padding:8px 14px;border-radius:11px;cursor:pointer}.btn:hover{border-color:var(--faint)}
+.btn{border:1px solid var(--line2);background:var(--track);color:var(--text);font:inherit;font-size:13px;padding:8px 14px;border-radius:11px;cursor:pointer}
+input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:18px;height:18px;margin:0;border:1.5px solid var(--line2);border-radius:6px;background:transparent;display:inline-grid;place-content:center;cursor:pointer;transition:background .15s var(--ease),border-color .15s var(--ease)}
+input[type=checkbox]::after{content:"";width:10px;height:10px;background:var(--bg);clip-path:polygon(14% 44%,0 59%,40% 100%,100% 17%,85% 0,39% 62%);transform:scale(0);transition:transform .15s var(--ease)}
+input[type=checkbox]:hover{border-color:var(--muted)}
+input[type=checkbox]:checked,input[type=checkbox]:indeterminate{background:var(--text);border-color:var(--text)}
+input[type=checkbox]:checked::after{transform:scale(1)}
+input[type=checkbox]:indeterminate::after{clip-path:none;width:10px;height:2px;border-radius:1px;transform:scale(1)}
+input[type=checkbox]:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.btn.primary{background:var(--text);color:var(--bg);border-color:transparent}.btn:hover{border-color:var(--faint)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px}
 .kpi{padding:18px 20px 0;position:relative;overflow:hidden}
@@ -151,15 +159,8 @@ h1{margin:2px 0 0;font-size:26px;font-weight:650;letter-spacing:-.02em}.top p{ma
 .hover-line{stroke:var(--text);stroke-opacity:.5}
 .tip{position:absolute;pointer-events:none;background:var(--tip);color:var(--tipText);border:1px solid var(--line2);border-radius:12px;padding:7px 11px;font-size:12px;transform:translate(-50%,calc(-100% - 12px));white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .tip-date{opacity:.65}.tip-value{font:600 13px ${MONO_CSS}}
-.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:var(--track);border:1px solid var(--line);color:var(--text);font:inherit;font-size:13px;cursor:pointer}
-.chip .x{color:var(--faint)}.chip[aria-pressed=false]{opacity:.45}
 .grid2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;align-items:start}
-.list{padding:20px 0 6px}
-.list-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 22px 14px}
 h3{margin:0;font-size:15px;font-weight:600}h3 .n{color:var(--faint);font-weight:400;margin-left:4px}
-.search{display:flex;align-items:center;gap:8px;background:var(--track);border:1px solid var(--line);border-radius:10px;padding:6px 10px;width:220px;color:var(--faint)}
-.search input{border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:13px;width:100%}
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font-weight:400;color:var(--faint);font-size:12px;padding:0 10px 10px;white-space:nowrap}
@@ -180,13 +181,13 @@ footer{color:var(--faint);font-size:12px;margin-top:22px}
 dialog{border:1px solid var(--line);border-radius:18px;padding:0;background:var(--panel);color:var(--text);box-shadow:0 24px 70px rgba(0,0,0,.4);width:min(840px,92vw)}
 dialog::backdrop{background:rgba(0,0,0,.55)}
 .dlg-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
-.dlg-actions{display:flex;gap:8px}.dlg-body{padding:18px}.dlg-body svg{width:100%;height:auto;display:block;border-radius:12px}
+.dlg-actions{display:flex;gap:8px}.dlg-body{padding:18px}.dlg-body svg{width:100%;height:auto;max-height:calc(100vh - 150px);display:block;border-radius:12px}
 @media (max-width:1360px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:1100px){.grid2{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;border-right:0;border-bottom:1px solid var(--line)}
 .side-label,.foot-text,.foot-sep{display:none}.side-foot{margin:0 0 0 auto;padding:0;border:0}.brand{padding:2px 10px}#sections{display:flex;gap:4px;flex-wrap:wrap}.nav-item{width:auto}
-main{padding:16px}.search{width:160px}.big{font-size:32px}}
-@media (max-width:520px){.kpis{grid-template-columns:minmax(0,1fr)}.top .actions{width:100%;justify-content:space-between}.list-head{flex-wrap:wrap}.search{width:100%}}`
+main{padding:16px}.big{font-size:32px}}
+@media (max-width:520px){.kpis{grid-template-columns:minmax(0,1fr)}.top .actions{width:100%;justify-content:space-between}}`
 
 // The page draws itself from the JSON block: project picker, period, charts and table need no reload.
 // Names only ever reach the page as text (textContent), never as HTML.
@@ -199,7 +200,7 @@ const APP = `(function () {
   function groupName(n) { var al = (D.config && D.config.aliases) || {}, more = (D.config && D.config.chats) || []; if (al[n]) n = al[n]; return CHAT_RE.test(n) || more.indexOf(n) >= 0 ? 'Chats' : n }
   tasks.forEach(function (x) { x.project = groupName(x.project) })
   ;(D.events || []).forEach(function (e) { e.project = groupName(e.project) })
-  var state = { project: '', cat: '', metric: 'time', q: '', period: 30, hidden: {} }
+  var state = { project: '', cat: '', rsort: { k: 'ts', d: -1 }, metric: 'time', q: '', period: 30, hidden: {} }
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   var PALETTE = ${JSON.stringify(PALETTE)}
   // Each KPI its own colour pair, apart from the project colours: the line runs from one to the other.
@@ -210,11 +211,10 @@ const APP = `(function () {
   function two(n) { return (n < 10 ? '0' : '') + n }
   function dayKey(ms) { var d = new Date(ms); return d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()) }
   // claude-opus-5-5 reads as Opus 5.5; a trailing date in the id is dropped.
-  function modelName(m) { var p = m.replace(/^claude-/, '').split('-'); return p[0] ? p[0][0].toUpperCase() + p[0].slice(1) + (p.length > 1 ? '\\u00a0' + p.slice(1).filter(function (x) { return x.length < 3 }).join('.') : '') : '' }
   function shortDate(key) { return MONTHS[+key.slice(5, 7) - 1] + ' ' + +key.slice(8, 10) }
   function dur(min) { return min < 60 ? min + 'm' : Math.floor(min / 60) + 'h ' + (min % 60) + 'm' }
   function time(ms) { var s = Math.round(ms / 1000); return s < 60 ? s + 's' : s < 3600 ? Math.floor(s / 60) + 'm ' + (s % 60) + 's' : dur(Math.round(s / 60)) }
-  function tok(n) { return n < 1000 ? String(Math.round(n)) : n < 1e6 ? +(n / 1e3).toFixed(1) + 'k' : +(n / 1e6).toFixed(1) + 'M' }
+  function tok(n) { return n < 1000 ? String(Math.round(n)) : n < 1e6 ? +(n / 1e3).toFixed(1) + 'k' : n < 1e9 ? +(n / 1e6).toFixed(1) + 'M' : +(n / 1e9).toFixed(1) + 'B' }
   function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
   function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's') }
   function add(a, b) { return a + b }
@@ -403,26 +403,30 @@ const APP = `(function () {
 
   // The share card: the numbers and the stream of what is on screen.
   function card() {
-    var list = scope(), n = span(), keys = days(n), cur = inDays(list, keys).filter(function (t) { return !state.hidden[t.project] })
+    var list = scope(), n = span(), keys = days(n), cur = inDays(list, keys), shown = cur.filter(function (t) { return !state.hidden[t.project] })
+    // Projects hidden from the chart are left out of the card too, unless that would leave it empty.
+    if (shown.length) cur = shown
     var projects = names.filter(function (p) { return cur.some(function (t) { return t.project === p }) })
     byId('c-scope').textContent = (state.project || plural(projects.length, 'project')) + ' · ' + (state.period ? 'last ' + n + ' days' : 'all time')
-    byId('c-time').textContent = time(total(cur, METRICS.time.pick))
-    byId('c-cost').textContent = money(total(cur, METRICS.cost.pick))
-    byId('c-tokens').textContent = tok(total(cur, METRICS.tokens.pick))
     byId('c-sessions').textContent = String(cur.length)
+    var real = projects.filter(function (p) { return p !== 'Chats' })
+    byId('c-sub').textContent = plural(real.length, 'project') + (projects.length > real.length ? ' and chats' : '') + ' · ' + money(total(cur, METRICS.cost.pick)) + ' · ' + time(total(cur, METRICS.time.pick)) + ' of agent time'
     cardTiles(list, cur)
-    var g = byId('c-stream'), W = 1200, base = 600, topY = 500; g.textContent = ''
-    var layers = projects.map(function (p) { return perDay(cur.filter(function (t) { return t.project === p }), keys, METRICS.time.pick) })
-    var totals = keys.map(function (_, i) { return layers.reduce(function (a, r) { return a + r[i] }, 0) }), max = Math.max.apply(null, totals.concat([0]))
-    if (max <= 0) return
-    var x = function (i) { return n > 1 ? i * W / (n - 1) : W / 2 }, y = function (v) { return base - v / max * (base - topY) }, acc = keys.map(function () { return 0 }), shapes = []
-    layers.forEach(function (r, li) {
-      var lower = acc, upper = acc.map(function (a, i) { return a + r[i] }); acc = upper
-      var up = smooth(upper.map(function (v, i) { return [x(i), y(v)] })), low = smooth(lower.map(function (v, i) { return [x(i), y(v)] }).reverse())
-      shapes.push({ d: up + 'L' + low.slice(1) + 'Z', fill: 'url(#cf' + PALETTE.indexOf(colorOf(projects[li])) + ')', top: up })
+    // Two panels, one bar per day: plain rounded bars draw the same way for 7 days or for a year, and each panel names its own maximum.
+    var g = byId('c-stream'); g.textContent = ''
+    var PANELS = [['Cost per day', METRICS.cost.pick, money, '#5fe08a', 72], ['Tokens per day', METRICS.tokens.pick, tok, '#7c8cff', 624]]
+    PANELS.forEach(function (pn) {
+      var vals = perDay(cur, keys, pn[1]), max = Math.max.apply(null, vals.concat([0])), left = pn[4], W = 504, base = 580, topY = 506
+      var put = function (x, y, anchor, size, text) { var t = svg('text', { x: x, y: y, 'text-anchor': anchor, 'font-size': size, fill: '#8d8b84', 'font-family': '${MONO_CSS}' }, g); t.textContent = text }
+      put(left, 490, 'start', 16, pn[0]); put(left + W, 490, 'end', 16, max > 0 ? 'max ' + pn[2](max) : 'no data')
+      put(left, 600, 'start', 13, shortDate(keys[0])); put(left + W, 600, 'end', 13, shortDate(keys[n - 1]))
+      if (max <= 0) return
+      var step = W / n, bw = Math.max(1.5, step * (n > 60 ? .8 : .7))
+      vals.forEach(function (v, i) {
+        var h = v > 0 ? Math.max(4, v / max * (base - topY)) : 2
+        svg('rect', { x: (left + i * step + (step - bw) / 2).toFixed(1), y: (base - h).toFixed(1), width: bw.toFixed(1), height: h.toFixed(1), rx: Math.min(bw / 2, 4), fill: v > 0 ? pn[3] : '#242422', opacity: v > 0 ? .45 + .55 * v / max : 1 }, g)
+      })
     })
-    svg('path', { d: shapes[shapes.length - 1].top + 'L' + W + ',' + base + 'L0,' + base + 'Z', fill: '#5fe08a', opacity: .18, filter: 'url(#cglow)' }, g)
-    shapes.forEach(function (s) { svg('path', { d: s.d, fill: s.fill }, g) })
   }
 
   ${STATS_SRC}
@@ -481,23 +485,20 @@ const APP = `(function () {
 // The page fills its numbers and stream; the logo symbol joins it when the card is saved.
 const SANS = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
 const MONO = "'JetBrains Mono', ui-monospace, Menlo, monospace"
-const cardStat = (y: number, label: string, id: string) =>
-  `<text x="760" y="${y}" font-size="20" fill="#8d8b84">${label}</text><text id="${id}" x="1128" y="${y}" text-anchor="end" font-family="${MONO}" font-size="30" fill="#f3f2ee"></text>`
 const tile = (x: number, y: number, label: string, id: string) =>
   `<text x="${x}" y="${y}" font-size="17" fill="#8d8b84">${label}</text><text id="${id}" x="${x}" y="${y + 36}" font-family="${MONO}" font-size="27" fill="#f3f2ee"></text>`
 const cardSvg = (name: string) => `<svg id="card" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" font-family="${SANS}">
-<defs>${PALETTE.map((c, i) => `<linearGradient id="cf${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".95"/><stop offset="1" stop-color="${c}" stop-opacity=".55"/></linearGradient>`).join('')}<filter id="cglow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="12"/></filter><radialGradient id="chalo" cx=".62" cy=".8" r=".6"><stop offset="0" stop-color="#5fe08a" stop-opacity=".16"/><stop offset="1" stop-color="#5fe08a" stop-opacity="0"/></radialGradient></defs>
+<defs><radialGradient id="chalo" cx=".62" cy=".8" r=".6"><stop offset="0" stop-color="#5fe08a" stop-opacity=".16"/><stop offset="1" stop-color="#5fe08a" stop-opacity="0"/></radialGradient></defs>
 <rect width="1200" height="630" fill="#070707"/><rect width="1200" height="630" fill="url(#chalo)"/>
-<g id="c-stream"></g><rect y="600" width="1200" height="30" fill="#070707"/>
+<g id="c-stream"></g>
 <use href="#pt-logo" x="72" y="62" width="48" height="55" color="#f3f2ee"/>
 <text x="134" y="98" font-family="${MONO}" font-size="28" font-weight="600" fill="#f3f2ee">${esc(name)}</text>
 <text id="c-scope" x="1128" y="98" text-anchor="end" font-size="20" fill="#8d8b84"></text>
-<text x="72" y="196" font-size="22" fill="#8d8b84">Agent time</text><text id="c-time" x="66" y="292" font-family="${MONO}" font-size="104" font-weight="600" letter-spacing="-5" fill="#f3f2ee"></text>
-${cardStat(172, 'Cost', 'c-cost')}${cardStat(228, 'Tokens', 'c-tokens')}${cardStat(284, 'Sessions', 'c-sessions')}
-<line x1="72" y1="326" x2="1128" y2="326" stroke="#242422"/>
-${tile(72, 362, 'Projects', 'c-projects')}${tile(360, 362, 'Active days', 'c-active')}${tile(648, 362, 'Streak', 'c-streak')}${tile(936, 362, 'Busiest day', 'c-busiest')}
-${tile(72, 436, 'Reuse', 'c-reuse')}${tile(360, 436, 'Router', 'c-router')}${tile(648, 436, 'Plan pace', 'c-plan')}${tile(936, 436, 'Reviews', 'c-runs')}
-<text x="72" y="621" font-family="${MONO}" font-size="15" fill="#5e5c55">measured in Claude Code</text></svg>`
+<text x="72" y="190" font-size="22" fill="#8d8b84">Sessions</text><text id="c-sessions" x="66" y="296" font-family="${MONO}" font-size="112" font-weight="600" letter-spacing="-5" fill="#f3f2ee"></text>
+<text id="c-sub" x="72" y="340" font-size="24" fill="#8d8b84"></text>
+<line x1="72" y1="372" x2="1128" y2="372" stroke="#242422"/>
+${tile(72, 414, 'Active days', 'c-active')}${tile(360, 414, 'Streak', 'c-streak')}${tile(648, 414, 'Reuse', 'c-reuse')}${tile(936, 414, 'Plan pace', 'c-plan')}
+<text x="72" y="622" font-family="${MONO}" font-size="14" fill="#5e5c55">measured in Claude Code</text></svg>`
 
 // JSON inside a script block: "<" is escaped so no name can close the block.
 const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
@@ -530,7 +531,7 @@ export function boardHtml(tasks: Task[], now: number, extra: BoardExtra = { even
 <aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>${esc(name)}</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
 <main>
 <div class="top"><div><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
-<div class="actions"><div class="picker"><button type="button" class="btn" id="picker" aria-haspopup="menu">All projects ▾</button></div><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="grp" role="group" aria-label="Export"><button type="button" id="copy-summary">Copy summary</button><button type="button" id="export-all">Export all</button><button type="button" id="export-raw">Raw data</button><button type="button" id="share">Share card</button></div></div></div>
+<div class="actions"><div class="picker"><button type="button" class="btn" id="picker" aria-haspopup="menu">All projects ▾</button></div><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="picker share"><button type="button" class="btn" id="share-menu-btn" aria-haspopup="menu">Share ▾</button><div class="menu" id="share-menu" hidden><button type="button" id="share">Share card</button><button type="button" id="copy-summary">Copy summary</button></div></div><button type="button" class="btn primary" id="export-all">Export</button></div></div>
 <div class="page on" data-page="overview">
 <section class="kpis" id="kpis"></section>
 <section class="card chart-card"><div class="chart-head"><div><div class="label" id="chart-sub"></div><div class="big num" id="chart-total"></div></div>
@@ -544,7 +545,7 @@ ${sectionHtml('projects')}
 ${['context', 'reuse', 'router', 'plans', 'runs', 'extras'].map(id => `<div class="page" data-page="${id}">${sectionHtml(id)}</div>`).join('\n')}
 <footer>Measured by the ${esc(name)} band in Claude Code. Cost is the API-priced cost Claude Code reports (/cost), not a bill. Nothing here is estimated.</footer>
 </main></div>
-<dialog id="export-dialog"><div class="dlg-head"><b>Export all</b><div class="dlg-actions"><button type="button" class="btn" id="export-raw-dlg">Raw data</button><button type="button" class="btn" id="export-pdf">PDF</button><button type="button" class="btn" id="export-md">Markdown</button><button type="button" class="btn" id="export-json">JSON</button><button type="button" class="btn" id="export-copy">Copy</button><button type="button" class="btn" id="export-close">Close</button></div></div><div class="dlg-body"><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label><label class="li"><input type="checkbox" id="with-titles"><span>Include session titles (the first words of each prompt)</span></label></div></dialog>
+<dialog id="export-dialog"><div class="dlg-head"><b>Export</b><button type="button" class="btn" id="export-close" aria-label="Close">✕</button></div><div class="dlg-body xsplit"><div class="xleft"><div class="xhead"><span class="stat-l">Sections</span><label class="li xall"><input type="checkbox" id="export-all-sections" aria-label="All sections"><span>All</span></label></div><div id="export-list"></div><div class="xhead xopt"><span class="stat-l">Options</span></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label><label class="li"><input type="checkbox" id="with-titles"><span>Include session titles</span></label></div><div class="xright"><div class="xhead"><span class="stat-l">Format</span></div><div class="xfmt" role="radiogroup" aria-label="Format"><label class="xcard"><input type="radio" name="xfmt" value="pdf" checked><span>PDF<i>print the chosen sections</i></span></label><label class="xcard"><input type="radio" name="xfmt" value="md"><span>Markdown<i>a short text report</i></span></label><label class="xcard"><input type="radio" name="xfmt" value="raw"><span>Raw data<i>everything, for analysis</i></span></label></div><button type="button" class="btn primary xgo" id="export-go">Download</button></div></div></dialog>
 <dialog id="share-dialog"><div class="dlg-head"><b>Share card</b><div class="dlg-actions"><button type="button" class="btn" id="save-png">Save PNG</button><button type="button" class="btn" id="save-svg">Save SVG</button><button type="button" class="btn" id="share-close">Close</button></div></div><div class="dlg-body">${cardSvg(name)}</div></dialog>
 <script type="application/json" id="board-data">${json({ now, tasks, ...extra, brand: name })}</script>
 <script>${APP}</script></body></html>`

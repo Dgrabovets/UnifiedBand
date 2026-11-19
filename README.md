@@ -24,20 +24,20 @@ The mode, skills, hooks, task tracking and board come from [Ponytail](https://gi
 
 ## Board
 
-The Board button opens a local page (no server, no network) built from three sources: the task ledger, the event journal and the model router's log.
+The Board button opens a local page (no server, no network) built from three sources: the task ledger, the event journal and the model router's log. The ledger is one CSV per project and session (`<project>-<session>.csv`, and `<project>-import.csv` from `/ponytail band import`); the Board merges them.
 
-- **Share card** carries the hero numbers plus projects, active days, streak, busiest day, reuse, router, plan pace and reviews.
-- **Overview**: four cards with sparklines (Sessions, Agent time, Cost, Tokens), a stacked chart by project, the Activity honeycomb, period 7d, 30d, 90d, All, and Share card.
+- **Share card** is a poster: the session count as the big number, a line with projects, cost and agent time, four figures (active days, streak, reuse, plan pace) and two bar panels (cost and tokens per day of the chosen period) along the bottom. It is shown whole, scaled to fit.
+- **Overview**: four cards with sparklines (Sessions, Agent time, Cost, Tokens), a stacked chart by project, the Activity honeycomb, period 7d, 30d, 90d, All, and the Share and Export buttons: Share holds Share card and Copy summary, Export opens a dialog: pick sections and options on the left, a format (PDF, Markdown, Raw data) on the right, then Download.
 - **Projects** (on the Overview page, above Activity) is one table that is also the chart's legend: a swatch shows or hides a project in the chart, filters pick a category, Large projects open their own page. With a project chosen it shrinks to one line. Every project worked on, in four categories (Large, Medium, Small, Chat) scored from turns, cost, sessions, days of work and whether it has a `PLAN.md`. Click a Large project for its own page with all the sections below filtered to it.
 - **Context and limits**: context fill curves, fill rate, life before compaction, 5-hour window peaks, burn rate, weekly forecast, blocks.
 - **Reuse**, **Model Router** (matrix from your model to the chosen one, savings estimate, last decisions), **Plans** (burn-up, velocity, projects without a plan), **Review and Audit**, **Extras** (cache, tests, cost by model, working hours, expensive sessions, push backs, subagents).
 - **Motion**, always on: pages fade in, cards rise in turn, numbers roll like a departures board, lines and charts draw in, the main chart morphs between metrics, the honeycomb pops in as a wave and the hottest cells glow, bars and columns grow, a limit close to its end breathes a red ring, a streak of a week or more throws confetti once, the share card assembles itself, cards glow under the pointer. Only transform and opacity move (plus the clip of a drawing chart and the shape of the morphing one). The system "reduce motion" setting turns all of it off.
 - **Project switcher** in the header on every page: all projects, or one of the large ones.
-- **Raw data**: one JSON with the ledger, the journal, the router log, the config and every section's numbers, with a schema, for sending to someone who will analyse it. Session titles only if you tick "Include session titles"; "Hide project names" masks the names.
+- **Raw data**: one JSON with the ledger, the journal, the router log, the config and every section's numbers, with a schema, for sending to someone who will analyse it. It follows the sections ticked in the Export dialog (the ledger, the journal and the router log are included only when a ticked section uses them). Session titles only if you tick "Include session titles"; "Hide project names" masks the names.
 - **Pages**: the sections are tabs, one page at a time. Ad hoc chats (the app's `spare-*` and `scratch-*` folders, `sandbox`, a drive root) are one group, "Chats", counted in sessions and never opened per chat.
-- **Export**: every section has Export (PDF, Markdown, CSV, JSON). PDF opens the browser's print dialog: choose "Save as PDF". Export all takes any sections, with an option to hide project names. Copy summary puts a short Markdown report on the clipboard.
+- **Export**: every section has Export (PDF, Markdown, CSV). PDF opens the browser's print dialog: choose "Save as PDF". Export all takes any sections, with an option to hide project names. Copy summary puts a short Markdown report on the clipboard.
 
-The event journal lives in `~/.config/ponytail/band/events-YYYY-MM.jsonl`: one line per turn, prompt, compaction, `/model` command, subagent turn and review or audit run. It never stores prompt text, only counts and flags. History starts the day the journal is first written.
+The event journal lives in `~/.config/ponytail/band/events-YYYY-MM-DD-<session>.jsonl` (one file per session and day): one line per turn, prompt, compaction, `/model` command, subagent turn and review or audit run. It never stores prompt text, only counts and flags. History starts the day the journal is first written.
 
 The dashboard is called Unified Band, with a hexagon-and-bars mark of its own. Set `"title"` in `board.json` to call it something else; the name shows in the sidebar, the tab, the share card and the exports.
 

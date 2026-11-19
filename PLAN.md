@@ -1,256 +1,218 @@
-# План: новый Board и статистика
+# Plan: the new Board and its statistics
 
-Статус: план согласован, решения записаны в конце файла. Работа над кодом не начата. Галочки ставятся по ходу работы, карточка Project на панели считает по ним процент.
+Status: the plan is agreed and the decisions are at the end of the file. Ticks are set as the work goes; the Project card on the band counts them for the completion percentage.
 
-## Цель
+## Goal
 
-Board становится одной страницей про вашу работу с Claude Code: без выбора проектов и сессий, с большим числом статистики и с выгрузкой любого раздела отдельно или всех вместе. Кнопка Copy уходит с панели в Board.
+The Board becomes one page about your work with Claude Code: no project or session pickers, a lot of statistics, and export of any section alone or all together. The Copy button leaves the band and moves into the Board.
 
-## Что остаётся из текущего Board
+## What stays from the first Board
 
-По вашим скриншотам:
+- four cards with a chart inside: Sessions, Agent time, Cost, Tokens;
+- the period switch 7d, 30d, 90d, All;
+- the big per-day chart (stacked area) with tabs Agent time, Cost, Tokens;
+- the Activity block: a hexagon map of the last 12 weeks, Active days, Streak, Busiest day, Longest session, Average per session, Average cost per session;
+- the Share card button (a picture card to post).
 
-- четыре карточки с графиком внутри: Sessions, Agent time, Cost, Tokens;
-- переключатель периода 7d, 30d, 90d, All;
-- большой график по дням (stacked area) с вкладками Agent time, Cost, Tokens;
-- блок Activity: шестиугольная карта по дням за 12 недель, Active days, Streak, Busiest day, Longest session, Average per session, Average cost per session;
-- кнопка Share card (картинка-карточка для публикации).
+## What goes away
 
-## Что убираем
+- the global project and session picker in the side panel and every list that depended on it. Only the pages of large projects stay (see "Project categories");
+- the Copy button on the band above the prompt (the function moves into the Board);
+- extra fields of the old Board.
 
-- общий выбор проектов и сессий в боковой панели и все списки, которые от него зависят. Остаются только страницы больших проектов (см. «Категории проектов»);
-- кнопку Copy на панели над промптом (функция переезжает в Board);
-- лишние поля старого Board, которых нет на ваших скриншотах.
+## Data: what exists and what must be collected
 
-Остаётся счётчик проектов (см. «Категории проектов»).
-
-## Данные: что есть и что надо собирать
-
-| Раздел | Есть сейчас | Надо добавить |
+| Section | Exists now | To add |
 | --- | --- | --- |
-| Overview | CSV по задачам (стоимость, ходы, минуты, токены, reuse, тесты, уровень, модель) | ничего |
-| Контекст и лимиты | только последнее значение на панели | журнал: процент контекста и лимитов на каждом ходу, компакции |
-| Reuse | reuse_pct, reused, new, callers_open в CSV | ничего, только показать |
-| Model Router | журнал роутера audit.jsonl | связь с результатом: поправили ли модель после решения |
-| Планы | процент по PLAN.md только сейчас | снимок done/total на каждом ходу, список проектов без PLAN.md |
-| Review и Audit | ничего | журнал запусков и число находок |
+| Overview | task CSV (cost, turns, minutes, tokens, reuse, tests, level, model) | nothing |
+| Context and limits | only the last value on the band | a journal: context and limit percent on every turn, compactions |
+| Reuse | reuse_pct, reused, new, callers_open in the CSV | nothing, only show it |
+| Model Router | the router's audit.jsonl | a link to the outcome: was the model corrected after the decision |
+| Plans | the percent from PLAN.md, only now | a done/total snapshot on every turn, a list of projects without PLAN.md |
+| Review and Audit | nothing | a journal of runs and the number of findings |
 
-Новый журнал событий лежит рядом с CSV (`events.jsonl`), по одной строке на ход: время, сессия, проект, контекст, лимиты 5 часов и недели с временем сброса, стоимость, модель, решение роутера, признак компакции, done и total из PLAN.md. Пишет его мод. История до включения журнала недоступна, графики контекста и лимитов начнутся с первого дня записи.
+The event journal sits next to the CSV, one line per turn: time, session, project, context, 5-hour and weekly limits with reset times, cost, model, router decision, compaction flag, done and total from PLAN.md. The mod writes it. History before the journal is not available; the context and limit charts start on the first day of recording.
 
-## Категории проектов
+## Project categories
 
-Нужно отличать большой проект от маленького и от отдельного чата с одним вопросом. Варианты:
+The Board has to tell a large project from a small one and from a one-question chat. Options were:
 
-- **А. По размеру работы.** Chat: меньше 8 ходов и меньше $1. Small: до 50 ходов. Medium: до 200 ходов или $25. Large: больше. Просто, но один проект с десятком сессий может выглядеть маленьким.
-- **Б. По признакам проекта.** Chat: нет git-репозитория. Experiment: репозиторий и не больше двух сессий. Project: три и больше сессий или есть PLAN.md. Big: десять и больше сессий или больше $100. Ближе к тому, как вы сами делите работу.
-- **В. Баллы (рекомендую).** За ходы, стоимость, число сессий, число дней работы и наличие плана начисляются баллы, по сумме четыре категории: Chat, Small, Medium, Large. Любой проект можно вручную перенести в другую категорию в файле `board.json`.
+- **A. By size of work.** Chat: under 8 turns and under $1. Small: up to 50 turns. Medium: up to 200 turns or $25. Large: more. Simple, but a project with ten short sessions can look small.
+- **B. By project traits.** Chat: no git repository. Experiment: a repository and at most two sessions. Project: three or more sessions or a PLAN.md. Big: ten or more sessions or over $100.
+- **C. Points (recommended).** Turns, cost, number of sessions, number of working days and the presence of a plan add points; the sum gives four categories: Chat, Small, Medium, Large. Any project can be moved by hand in `board.json`.
 
-Выбран вариант В.
+Chosen: C.
 
-Как показываем: карточка Projects. Сверху общее число проектов, ниже разбивка по категориям плитками с числом, справа список только Large с их долей стоимости. Общего выбора проекта нет.
+Large projects get their own page with the same sections as the whole Board, for that project only. Nice names (for example "Sip & Tell" instead of the folder name) and manual moves between categories live in `board.json`.
 
-Страницы больших проектов: у каждого Large (Steward, Sip & Tell и остальные) своя страница с теми же разделами, что и общий Board (Overview, контекст и лимиты, Reuse, Router, планы, Review и Audit), но только по этому проекту. Открывается кликом по проекту в списке Large. Красивые названия (например «Sip & Tell» вместо имени папки) и ручной перенос между категориями задаются в `board.json`.
+## New sections
 
-## Новые разделы (варианты, выбор за вами)
+### Context and limits
 
-### Контекст и лимиты
+- context fill rate, how long a context lives, compactions per session;
+- 5-hour limit: burn rate, windows that reached 95%;
+- weekly limit by day and a forecast to the end of the week.
 
-- скорость заполнения контекста: процент за ход и за час;
-- сколько живёт контекст: ходы, минуты и токены до компакции, число компакций на сессию;
-- наложение кривых заполнения контекста по сессиям;
-- лимит 5 часов: темп расхода в процентах за час, сколько окон дошло до 95%, время до исчерпания при текущем темпе;
-- лимит недели по дням и прогноз расхода к концу недели;
-- сколько времени потеряно после блокировки до сброса.
+### Reuse (how well Ponytail works)
 
-Рекомендую: кривые контекста, пик каждого окна 5 часов, число окон выше 95%, прогноз недели.
-
-### Reuse (насколько удачно работает Ponytail)
-
-- доля reuse по неделям и по уровням lite, full, ultra;
-- сколько нового кода создано и сколько переиспользовано;
-- сколько вызовов осталось открытыми после удаления кода (callers_open);
-- доля задач без запущенных тестов;
-- сравнение уровней по стоимости и числу ходов на задачу. Это корреляция, а не доказательство пользы.
+- reuse share by week and by level (lite, full, ultra);
+- new code created against code reused; callers left open; tasks without tests run;
+- level comparison by cost and turns per task (a correlation, not proof).
 
 ### Model Router
 
-- воронка: все запросы, пропущенные как слишком короткие, оставлены на вашей модели (silent), перенаправлены (routed), поправлены вами после решения;
-- распределение по моделям, effort и tier, средняя уверенность, самые частые причины;
-- оценка экономии в долларах (по таблице цен роутера);
-- как часто вы вручную меняли модель после решения роутера;
-- отдельный сигнал, если роутер долго ничего не маршрутизирует (сейчас 0 из 11).
+- funnel: all prompts, skipped as too short, kept on your model (silent), routed, corrected by you afterwards;
+- distribution by model, effort and tier, average confidence, most common reasons;
+- estimated savings in dollars; a signal when the router routes nothing for a long time.
 
-Варианты: А сводка по решениям, Б воронка, В экономия и качество вместе. Рекомендую Б и В.
+### Plans and pace
 
-### Планы и скорость выполнения
+- done and total from PLAN.md on every turn: points per day, burn-down, completion forecast;
+- projects without a PLAN.md and projects with a stalled plan.
 
-- снимок done и total из PLAN.md на каждом ходу: скорость в пунктах в день, график сгорания, прогноз завершения;
-- список проектов без PLAN.md и список проектов с планом, но без движения больше N дней;
-- точность оценок, если у пункта указана оценка вида `[~2h]`.
+### Review and Audit
 
-Нужен формат плана с галочками `- [ ]`, как этот файл.
+- runs per project, findings per report (the skills end a report with `PONYTAIL_RESULT kind=review findings=N high=M`).
 
-### Review и Audit
+### Extras
 
-- число запусков по проектам, длительность, стоимость одного запуска;
-- число находок в отчёте (для этого навыки в конце отчёта выводят строку `PONYTAIL_RESULT kind=review findings=N high=M`);
-- что делалось после: правки файлов, которые назвал отчёт, в течение 30 минут;
-- повторяющиеся находки одного типа (не делаем: журнал хранит числа, а не текст отчётов).
+Cache hit share by day, cost per closed plan item, tests (share, failures, turns to green), cost by model, a weekday-by-hour map, most expensive sessions and outliers, short corrections per 100 turns, compactions, subagents, time per Ponytail level.
 
-Варианты: А только запуски и стоимость (навыки не меняем), Б плюс число находок, В плюс «исправлено или нет». Рекомендую Б.
+## Export
 
-### Мои предложения
+- every section has Export: Markdown, CSV, JSON, PDF;
+- Export all with a choice of sections; Raw data (one JSON for analysis);
+- project names are shown; "Hide project names" is available and off by default;
+- Copy summary in the Board header copies a short Markdown report.
 
-1. Кэш: доля попаданий по дням, стоимость «холодных» запусков, простои дольше срока жизни кэша.
-2. Стоимость одного закрытого пункта плана.
-3. Тесты: доля задач с тестами, доля падений, сколько ходов до зелёного результата.
-4. Структура расходов по моделям.
-5. Карта «день недели × час»: когда вы работаете продуктивнее.
-6. Самые дорогие сессии и выбросы.
-7. Короткие поправки («нет», «не так») на 100 ходов: показатель расхождений с моделью.
-8. Сколько токенов терялось при компакциях.
-9. Субагенты: число и стоимость.
-10. Время на каждом уровне Ponytail.
+## Style
 
-## Выгрузка
+Like the first Board: dark theme, large rounded cards, monospaced figures, a chart inside the card, the same period switch. Colour is never the only signal. Animations are off under `prefers-reduced-motion`.
 
-- У каждого раздела кнопка Export: Markdown, CSV, JSON и картинка-карточка (как Share card).
-- Кнопка Export all для всех разделов сразу и флажки, какие разделы включить.
-- Названия проектов в выгрузке показываются. Параметр «скрыть названия проектов» остаётся, но выключен по умолчанию.
-- Кнопка Copy summary в шапке Board копирует краткий отчёт в Markdown (бывшая кнопка Copy с панели).
+## Stages
 
-## Стиль
+Sizes: S about half a day, M a day, L two days.
 
-Как текущий Board: тёмная тема, крупные скруглённые карточки, цифры моноширинным шрифтом, график внутри карточки, те же переключатели периода. Цвета разделов: Context голубой, Limits янтарный и красный по порогу, Reuse зелёный, Router розовый, Plans бирюзовый, Review и Audit жёлтый. Цвет не единственный сигнал: у каждого значения есть подпись и порог. Анимации отключаются при `prefers-reduced-motion`. Слева вместо выбора проектов навигация по разделам: Overview, Context and limits, Reuse, Router, Plans, Review and Audit, Export. Перед кодом я покажу макеты каждого раздела на согласование.
+### 0. Agreement (S)
 
-## Правило для глобальных настроек
+- [x] Agree this plan
+- [x] Pick the metric options in every section
+- [x] Pick the project category option
+- [x] Write the plan rule into the global CLAUDE.md
+- [x] Agree the section mock-ups
 
-Перед началом проекта или большой задачи я пишу план (`PLAN.md` в корне, пункты с галочками `- [ ]`), согласую его с вами и начинаю только после согласия. Ход работы отмечаю галочками. Правило записано в `~/.claude/CLAUDE.md`, раздел «Планы».
+### 1. Data (M)
 
-## Этапы
+- [x] Event journal: format, a write on every turn
+- [x] Journal write test
+- [x] PLAN.md snapshots on every turn
+- [x] Journal of Review and Audit runs and the result line in the skills
+- [x] Link a router decision to a model correction
 
-Размеры: S примерно полдня, M день, L два дня.
+### 2. Board frame (M)
 
-### 0. Согласование (S)
+- [x] Remove the project and session pickers
+- [x] Keep Overview: four cards, big chart, Activity
+- [x] Projects card with categories (option C, points)
+- [x] board.json: nice names and manual category moves
+- [x] A page for every Large project
+- [x] Section navigation and the period switch everywhere
 
-- [x] Согласовать этот план
-- [x] Выбрать варианты метрик в каждом разделе
-- [x] Выбрать вариант категорий проектов
-- [x] Записать правило про планы в глобальный CLAUDE.md
-- [x] Согласовать макеты разделов
+### 3. Sections (L)
 
-### 1. Данные (M)
-
-- [x] Журнал событий events.jsonl: формат, запись на каждом ходу, ротация
-- [x] Тест записи журнала
-- [x] Снимки PLAN.md на каждом ходу
-- [x] Журнал запусков Review и Audit и строка результата в навыках
-- [x] Связь решения роутера с поправкой модели
-
-### 2. Каркас Board (M)
-
-- [x] Убрать выбор проектов и сессий
-- [x] Оставить Overview: четыре карточки, большой график, Activity
-- [x] Карточка Projects с категориями (вариант В, баллы)
-- [x] board.json: красивые названия проектов и ручной перенос между категориями
-- [x] Страница каждого Large-проекта с теми же разделами по одному проекту
-- [x] Навигация по разделам и период 7d, 30d, 90d, All для всех
-
-### 3. Разделы (L)
-
-- [x] Контекст и лимиты
+- [x] Context and limits
 - [x] Reuse
 - [x] Model Router
-- [x] Планы
-- [x] Review и Audit
-- [x] Кэш: доля попаданий по дням (холодные запуски и простои отдельно не считаются)
-- [x] Стоимость одного закрытого пункта плана (в разделе Plans)
-- [x] Тесты: доля задач с тестами, доля падений, ходы до зелёного результата
-- [x] Структура расходов по моделям
-- [x] Карта «день недели × час»
-- [x] Самые дорогие сессии и выбросы
-- [x] Короткие поправки («нет», «не так») на 100 ходов
-- [x] Компакции: число и средний процент контекста в момент компакции (потеря токенов точно не считается)
-- [x] Субагенты: число и стоимость
-- [x] Время на каждом уровне Ponytail
+- [x] Plans
+- [x] Review and Audit
+- [x] Extras (cache, cost per plan item, tests, cost by model, weekday map, outliers, corrections, compactions, subagents, level time)
 
-### 4. Выгрузка и панель (M)
+### 4. Export and band (M)
 
-- [x] Export у каждого раздела и Export all
-- [x] Убрать кнопку Copy с панели
-- [x] Copy summary в Board
+- [x] Export per section and Export all
+- [x] Remove the Copy button from the band
+- [x] Copy summary in the Board
 
-### 5. Проверка (M)
+### 5. Checks (M)
 
-- [x] Тесты генерации Board на фикстурах
-- [x] Проверка на реальных данных
-- [x] Скриншоты на согласование
-- [ ] Перевести PLAN.md на английский перед публикацией репозитория
-- [x] Обновить README и репозиторий
+- [x] Board generation tests on fixtures
+- [x] Check on real data
+- [x] Screenshots for approval
+- [x] Translate PLAN.md into English before publishing the repository
+- [x] Update README and the repository
 
-### 6. Board, второй проход (S)
+### 6. Board, second pass (S)
 
-- [x] Спонтанные чаты (spare-*, scratch-*, sandbox, корень диска) одной группой Chats, без детализации по чату
-- [x] Разделы как вкладки: одна страница за раз, выбор запоминается
-- [x] Выровнять раскладку: без наезжающих блоков и пустых колонок, текст карточек без размытия
-- [x] Выгрузка в PDF (печать в PDF: один раздел или выбранные)
-- [x] Share card с главными цифрами: проекты, активные дни, серия, лучший день, reuse, роутер, темп плана, ревью
+- [x] Ad hoc chats in one Chats group
+- [x] Sections as tabs
+- [x] Layout without overlapping blocks
+- [x] PDF export (print to PDF)
+- [x] Share card with the main figures
 
-### 7. Board, третий проход (S)
+### 7. Board, third pass (S)
 
-- [x] Honeycomb Activity компактнее: колонка до 520 пикселей, цифры рядом
-- [x] Выбор проекта в шапке на каждой странице
-- [x] Raw data: выгрузка всех данных одним JSON (журнал задач, журнал событий, лог роутера, конфиг, схема) для анализа
+- [x] A more compact Activity honeycomb
+- [x] A project picker in the header of every page
+- [x] Raw data export
 
-### 8. Board, анимации (S)
+### 8. Board, animations (S)
 
-Анимации всегда включены на одном насыщенном уровне (переключатель убран по вашей просьбе). Системная настройка «уменьшить движение» выключает всё.
+Always on, one rich level; the system "reduce motion" setting turns everything off.
 
-- [x] Вкладки: плавное появление страницы, в Rich карточки въезжают по очереди
-- [x] KPI: числа считаются от нуля, график внутри проявляется слева направо
-- [x] Большой график и линии: проявление слева направо, подсказка плавно возникает
-- [x] Honeycomb: ячейки появляются волной слева направо, самые горячие мягко пульсируют (Rich)
-- [x] Столбики окон и запусков растут снизу, полосы растут слева
-- [x] Матрица роутера: ячейки появляются по очереди (Rich)
-- [x] Меню, окна Export и Share card: появление с лёгким увеличением
-- [x] Кнопки: нажатие, плавная смена фона; карточки и строки проектов поднимаются при наведении (Rich)
-- [x] Боковое меню: метка активной вкладки вырастает, пункты появляются по очереди (Rich)
+- [x] Page and card entrance, rolling figures, charts drawn left to right
+- [x] Honeycomb wave and pulse, router matrix, bars growing
+- [x] Menus and dialogs with a soft zoom; pressed and hover states
+- [x] Chart morph between metrics, confetti on a 7-day streak, a breathing red limit card, glow under the pointer
 
-Вторая часть этапа:
+### 9. Board, polish (S)
 
-- [x] Морфинг главного графика при смене метрики Agent time, Cost, Tokens
-- [x] Числа крутятся как табло (по цифрам, слева направо)
-- [x] Конфетти один раз, если серия активных дней 7 и больше
-- [x] Красное «дыхание» карточки лимита, когда окно 5 часов выше 90% или прогноз недели выше 100%
-- [x] Свечение карточек под указателем
-- [x] Share card собирается при каждом открытии
-- [x] Мыло: текст в растянутом SVG заменён HTML, анимации входа больше не держат элементы на отдельном слое, подъём карточек по наведению убран
+- [x] Honeycomb glow is not clipped by its box
+- [x] Projects on the Overview page, before Activity
+- [x] Final check of all current functions
 
-### 9. Board, доводка (S)
+### 10. Board, projects table (S)
 
-- [x] Свечение honeycomb не обрезается краями: фильтр размытия и поле вокруг ячеек
-- [x] Projects на странице Overview перед блоком Activity, отдельной вкладки нет
-- [x] Итоговая проверка всего текущего функционала (тесты, страница на настоящем и тестовом журнале, экспорт, печать, режимы Ponytail)
+- [x] The legend chips and the Projects card are one table: a swatch shows or hides a project in the chart, category filters
+- [x] A chosen project shrinks the block to one line
 
-### 10. Board, таблица проектов (S)
+### 11. Board, name, logo, table (S)
 
-- [x] Чипы-легенда под графиком и карточка Projects объединены в одну таблицу: квадратик показывает или скрывает проект в графике, фильтры по категориям, у Large кнопка Open
-- [x] При выбранном проекте блок сжимается в одну строку с цифрами и планом
+- [x] No Projects caption or hint line, no Open button, Select all and Select none
+- [x] The dashboard is called Unified Band (the `title` key in board.json renames it), with a logo of its own
 
-### 11. Board, имя, картинка, таблица (S)
+### 12. Audit fixes (M)
 
-- [x] Убраны подпись раздела Projects и строка-подсказка над таблицей
-- [x] Из таблицы убрана кнопка Open, в ряду фильтров добавлены Select all и Select none
-- [x] Дашборд называется Unified Band (имя можно сменить в board.json, ключ title), свой логотип вместо логотипа Ponytail
+- [x] The event journal is one file per session and day, and a failed read no longer overwrites a file
+- [x] The task ledger is one file per project and session, the import writes its own file, the Board is built only on the button press
+- [x] A broken board.json costs only the config; hiding project names changes values only (tested)
+- [x] An empty category in the projects table says so; dead CSS and JS removed
+- [x] Author and licence in place, PLAN.md in English
 
-## Решения
+### 13. Board, review notes (M)
 
-1. Категории проектов: вариант В (баллы). Плюс страница статистики для каждого большого проекта (Steward, Sip & Tell и другие).
-2. Метрики: все мои предложения включены, у остальных разделов берутся рекомендованные варианты (контекст и лимиты, воронка и экономия роутера, число находок в Review и Audit).
-3. История контекста и лимитов начинается с включения журнала: принято.
-4. Названия проектов в выгрузке показываются, скрытие по желанию.
-5. Этот план переводится на английский перед публикацией репозитория.
+- [x] Category pills with a separator, a header checkbox for multi-select, a clearer session subtitle
+- [x] Large numbers as K, M, B
+- [x] Last decisions can be sorted (with a Move column); plans of Chats are not counted
+- [x] The model and the cache share are read from the end of the transcript with node (grep is missing on Windows)
+- [x] Header: Share menu (Share card, Copy summary) and an Export button; Export dialog with PDF, Markdown and Raw data rows (JSON removed)
+- [x] Share card as a poster: sessions as the big number, four figures and the period stream; shown whole in the dialog
 
-6. Макеты согласованы. Кнопки Copy summary, Export all и Share card одной группой. Графики сглаженные, столбики полностью скруглённые. Окна 5 часов по центру с легендой. Роутер показывается матрицей «ваша модель → выбранная» (строки и столбцы Haiku, Sonnet, Opus, диагональ значит «не менялась»), плюс таблица последних решений.
+### 14. Board, export dialog polish (S)
 
-Пороги категорий (баллы) остаются на подбор: сначала смотрим на ваших реальных данных, потом фиксируем.
+- [x] A custom checkbox in the Board's own style, with a mixed state
+- [x] Raw data follows the ticked sections; "All" checkbox; Options set apart from Sections
+- [x] The Share card no longer goes empty when every project is hidden in the table
+- [x] A click anywhere on a project row shows or hides it
+- [x] The Share card strip is two panels, cost and tokens per day, one rounded bar per day, each with its maximum and the date ends
+- [x] Export dialog is split: sections and options on the left, format cards and one Download button on the right
+
+## Decisions
+
+1. Project categories: option C (points), plus a page for every large project.
+2. Metrics: all my suggestions are in; other sections use the recommended options.
+3. Context and limit history starts when the journal is switched on: accepted.
+4. Project names are shown in exports, hiding is optional.
+5. This plan is translated into English before the repository is published.
+6. Mock-ups are agreed. Copy summary, Export all and Share card form one group. Charts are smooth, bars fully rounded. Router shows a matrix "your model to chosen model" plus a table of the last decisions.
+
+Category thresholds stay tunable: look at your real data first, then fix them.

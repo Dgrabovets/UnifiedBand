@@ -26,7 +26,7 @@ export const SECTIONS_CSS = `
 #heat{overflow:visible}
 .page{display:none;flex-direction:column;gap:14px}.page.on{display:flex}
 .heat-head{margin-bottom:6px}.heat-body{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:32px;align-items:start}.heat-map{min-width:0}#heat{max-width:520px;margin:0 auto}.heat-side{min-width:0}.heat .heroes{margin-top:4px}
-.picker{position:relative}.picker .menu{left:0;right:auto;min-width:220px}.menu .note{padding:6px 10px;margin:0}
+.picker{position:relative}.picker .menu{left:0;right:auto;min-width:220px}.picker.share .menu{left:auto;right:0;min-width:170px}.xrows{margin-bottom:14px}.xrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.xrow i{display:block;font-style:normal;color:var(--muted);font-size:12px;margin-top:2px}.menu .note{padding:6px 10px;margin:0}
 @media (max-width:1100px){.heat-body{grid-template-columns:minmax(0,1fr)}}
 .kpis{margin-bottom:0}.chart-card,.sec{margin-bottom:0}
 .kpi>*{position:relative;z-index:1}.kpi::after{z-index:0}
@@ -71,23 +71,31 @@ body{background:#fff}footer{display:none}
 .mx th{font-weight:400;color:var(--muted);font-size:12px;text-align:center;vertical-align:middle}.mx th.r{text-align:right;padding-right:10px;width:70px}
 .mx td{border-radius:12px;padding:14px 4px;font-size:16px;vertical-align:middle;font-family:${'"JetBrains Mono",ui-monospace,monospace'}}
 .mx td small{display:block;font:10px Inter,sans-serif;color:var(--faint);margin-top:2px}.mx td.st{border:1.5px solid var(--line2)}.mx td.tt{color:var(--muted)}
+.th-btn{font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer}.th-btn:hover,.th-btn.on{color:var(--text)}
 .dt{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}.dt th{font-weight:400;color:var(--faint);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}.dt td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}.dt td.why{white-space:normal;color:var(--muted)}
+.prow .tag{justify-self:start}
 .tag{font-size:11px;padding:2px 9px;border-radius:999px;white-space:nowrap;background:var(--nonebg);color:var(--muted)}.tag.ok{background:var(--okbg);color:var(--ok)}.tag.warn{background:var(--warnbg);color:var(--warn)}.tag.bad{background:var(--badbg);color:var(--bad)}
 .li{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}.li .sp{flex:1}.li .mut{color:var(--faint);font-size:12px}
-.pcat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
-.tile{border:1px solid var(--line);border-radius:14px;padding:10px 12px}.tile b{display:block;font:500 22px ${'"JetBrains Mono",ui-monospace,monospace'}}.tile span{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
 .ptable-note{margin-bottom:2px}
-.prow{display:grid;grid-template-columns:24px minmax(0,1.4fr) 84px 76px 84px minmax(0,1.3fr);gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line);transition:opacity .2s}
-.prow.head{border-top:0;color:var(--faint);font-size:12px;padding:2px 0 6px}.prow .r{text-align:right}.prow.dim{opacity:.4}
+.prow:not(.head){cursor:pointer}.prow:not(.head):hover{background:var(--track)}.prow{display:grid;grid-template-columns:24px minmax(0,1.4fr) 84px 76px 84px minmax(0,1.3fr);gap:12px;align-items:center;padding:9px 8px;margin:0 -8px;border-radius:8px;border-top:1px solid var(--line);transition:opacity .2s}
+.prow.head{border-top:0;color:var(--faint);font-size:12px;padding:2px 8px 6px}.prow .r{text-align:right}.prow.dim{opacity:.4}
 .psw{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--c);background:var(--c);padding:0;cursor:pointer}.psw[aria-pressed=false]{background:transparent}
 .plink{border:0;background:transparent;color:var(--text);font:inherit;text-align:left;padding:0;cursor:pointer}.plink:hover{text-decoration:underline}.plink.dimmed{color:var(--muted);text-align:right}
-.fc{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer}.fc.on{background:var(--text);color:var(--bg);border-color:transparent}.fl-acts{margin-left:auto;display:flex;gap:6px}.fc.ghost{border-color:transparent}.fc.ghost:hover{background:var(--track);color:var(--text)}
+.fc{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer}.fc.on{background:var(--text);color:var(--bg);border-color:transparent}.fl{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}.xhead{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px;min-height:24px}.xhead .li{padding:0;border:0}.xopt{margin-top:18px;padding-top:16px;border-top:1px solid var(--line2)}
+.xsplit{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px}
+.xsplit #export-list{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.xsplit .li{border:0;padding:6px 0}
+.xfmt{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.xcard{display:block;position:relative;border:1px solid var(--line2);border-radius:12px;padding:10px 12px;cursor:pointer;font-size:13px;transition:border-color .15s var(--ease),background .15s var(--ease)}
+.xcard input{position:absolute;opacity:0;inset:0;margin:0;width:100%;height:100%;cursor:pointer}
+.xcard i{display:block;font-style:normal;color:var(--muted);font-size:12px;margin-top:2px}
+.xcard:hover{background:var(--track)}.xcard:has(input:checked){border-color:var(--text);background:var(--track)}.xcard:has(input:focus-visible){outline:2px solid var(--text);outline-offset:2px}
+.xgo{width:100%}
+@media (max-width:700px){.xsplit{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:860px){.prow{grid-template-columns:24px minmax(0,1fr) 76px 80px 64px}.prow>:nth-child(3),.prow>:nth-child(6){display:none}}
-.proj{display:grid;grid-template-columns:150px minmax(0,1fr) 70px 16px;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line);cursor:pointer;background:transparent;border-left:0;border-right:0;border-bottom:0;width:100%;color:var(--text);font:inherit;text-align:left}.proj:hover{background:var(--track)}
 .hm{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:3px;margin-top:6px}.hm i{aspect-ratio:1;border-radius:4px;display:block;background:var(--empty)}
 .cat-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line2)}
-@media (max-width:1100px){.g3,.stats4,.pcat{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:640px){.g3,.stats3,.stats4,.stats2,.pcat{grid-template-columns:minmax(0,1fr)}.proj{grid-template-columns:100px minmax(0,1fr) 60px}}
+@media (max-width:1100px){.g3,.stats4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.g3,.stats3,.stats4,.stats2{grid-template-columns:minmax(0,1fr)}}
 `
 
 export const SECTIONS_JS = `
@@ -198,27 +206,26 @@ function drawProjects() {
   var count = function (c) { return all.filter(function (p) { return c === 'Chat' ? isChats(p) : p.category === c && !isChats(p) }).length }
   var chats = all.filter(isChats)[0]
   var fl = h('div', 'fl'), rowsFor = []
-  ;[['', 'All ' + all.length], ['Large', 'Large ' + count('Large')], ['Medium', 'Medium ' + count('Medium')], ['Small', 'Small ' + count('Small')], ['Chat', 'Chats ' + (chats ? plural(chats.sessions, 'session') : 0)]].forEach(function (f) {
+  ;[['', 'All · ' + all.length], ['Large', 'Large · ' + count('Large')], ['Medium', 'Medium · ' + count('Medium')], ['Small', 'Small · ' + count('Small')], ['Chat', 'Chats · ' + (chats ? plural(chats.sessions, 'session') : 0)]].forEach(function (f) {
     var c = h('button', 'fc' + (state.cat === f[0] ? ' on' : ''), f[1]); c.type = 'button'; c.setAttribute('aria-pressed', String(state.cat === f[0]))
     c.addEventListener('click', function () { state.cat = f[0]; drawProjects() }); fl.append(c)
   })
-  // Show or hide every project on screen in the chart at once.
-  var acts = h('span', 'fl-acts')
-  ;[['Select all', false], ['Select none', true]].forEach(function (x) {
-    var c = h('button', 'fc ghost', x[0]); c.type = 'button'
-    c.addEventListener('click', function () {
-      rowsFor.forEach(function (r) { state.hidden[r.p.name] = x[1]; r.sw.setAttribute('aria-pressed', String(!x[1])); r.tr.classList.toggle('dim', x[1]) })
-      chart(); card()
-    })
-    acts.append(c)
+  // The header checkbox shows or hides every project on screen in the chart at once.
+  var all_ = h('input', 'psel'); all_.type = 'checkbox'; all_.setAttribute('aria-label', 'Show every project in the chart')
+  all_.addEventListener('change', function () {
+    rowsFor.forEach(function (r) { state.hidden[r.p.name] = !all_.checked; r.sw.setAttribute('aria-pressed', String(all_.checked)); r.tr.classList.toggle('dim', !all_.checked) })
+    chart(); card()
   })
-  fl.append(acts)
-  b.append(fl, row('prow head', [h('span'), h('span', '', 'Project'), h('span', '', 'Category'), h('span', 'r', 'Sessions'), h('span', 'r', 'Cost'), h('span', '', 'Share')]))
+  b.append(fl, row('prow head', [all_, h('span', '', 'Project'), h('span', '', 'Category'), h('span', 'r', 'Sessions'), h('span', 'r', 'Cost'), h('span', '', 'Share')]))
   var spend = total(all, function (p) { return p.cost }) || 1
-  all.filter(function (p) { return !state.cat || (state.cat === 'Chat' ? isChats(p) : p.category === state.cat && !isChats(p)) }).forEach(function (p) {
+  var shown = all.filter(function (p) { return !state.cat || (state.cat === 'Chat' ? isChats(p) : p.category === state.cat && !isChats(p)) })
+  if (!shown.length) b.append(h('div', 'stat-s', 'No projects in this category.'))
+  function syncAll() { var on = shown.filter(function (p) { return !state.hidden[p.name] }).length; all_.checked = on === shown.length && on > 0; all_.indeterminate = on > 0 && on < shown.length }
+  shown.forEach(function (p) {
     var large = p.category === 'Large' && !isChats(p), tr = h('div', 'prow' + (state.hidden[p.name] ? ' dim' : ''))
     var sw = h('button', 'psw'); sw.type = 'button'; sw.style.setProperty('--c', colorOf(p.name)); sw.setAttribute('aria-pressed', String(!state.hidden[p.name])); sw.setAttribute('aria-label', 'Show ' + labelOf(p.name) + ' in the chart')
-    sw.addEventListener('click', function () { state.hidden[p.name] = !state.hidden[p.name]; sw.setAttribute('aria-pressed', String(!state.hidden[p.name])); tr.classList.toggle('dim', !!state.hidden[p.name]); chart(); card() })
+    // The whole row toggles the project; the swatch button inside it is the keyboard target, and a Large project's name still opens its page.
+    tr.addEventListener('click', function (ev) { if (ev.target.closest && ev.target.closest('.plink')) return; state.hidden[p.name] = !state.hidden[p.name]; sw.setAttribute('aria-pressed', String(!state.hidden[p.name])); tr.classList.toggle('dim', !!state.hidden[p.name]); syncAll(); chart(); card() })
     function open() { state.project = p.name; state.hidden = {}; render(); showPage('overview') }
     var name
     if (large) { name = h('button', 'plink', labelOf(p.name)); name.type = 'button'; name.addEventListener('click', open) } else { name = h('span', '', isChats(p) ? 'Chats' : labelOf(p.name)) }
@@ -227,6 +234,7 @@ function drawProjects() {
     rowsFor.push({ p: p, tr: tr, sw: sw })
     b.append(tr)
   })
+  syncAll()
   setExport('projects', 'Projects', ['Project', 'Category', 'Sessions', 'Turns', 'Cost', 'Days', 'Plan'], all.map(function (p) { return [labelOf(p.name), p.category, String(p.sessions), String(p.turns), money(p.cost), String(p.days), p.plan ? 'yes' : 'no'] }))
 }
 
@@ -298,12 +306,19 @@ function drawRouter() {
   var matrix = panel('Where prompts went', 'Rows are the model you were on, columns the model the router picked.', table,
     row('leg', [h('span', '', 'Stayed: ' + r.stayed + ' of ' + r.total + ' · ' + Math.round(r.stayed / r.total * 100) + '%'), h('span', '', 'Sent up: ' + r.up), h('span', '', 'Sent down: ' + r.down)]),
     row('stats4', [stat('Saved, est.', money(r.saved), 'from down hops'), stat('Extra, est.', '+' + money(r.extra), 'from up hops'), stat('Avg confidence', r.avgConf == null ? '–' : (Math.round(r.avgConf * 100) / 100).toFixed(2), 'classifier score'), stat('Corrected by you', String(r.corrected), 'of ' + r.routed + ' routed')]))
-  var last = panel('Last decisions', 'What you were on, what it picked and why'), t = h('table', 'dt'), th = h('tr')
-  ;['When', 'You were on', 'Sent to', 'Effort', 'Outcome', 'Why'].forEach(function (x) { th.append(h('th', '', x)) })
+  var last = panel('Last decisions', 'Click a column to sort. Sort by Move to see why the router changed the model.'), t = h('table', 'dt'), th = h('tr')
+  var rank = function (m) { return r.order.indexOf(modelKey(m)) }, EFFORT = ['low', 'medium', 'high', 'xhigh', 'max']
+  var fixed = function (x) { return x.outcome !== 'silent' && models.some(function (m) { return m.session === x.session && m.ts > x.ts && m.ts - x.ts < 600000 }) }
+  var sortKey = function (x, k) { return k === 'ts' ? x.ts : k === 'parent' ? rank(x.parent) : k === 'model' ? rank(x.model) : k === 'move' ? rank(x.model) - rank(x.parent) : k === 'effort' ? EFFORT.indexOf(x.effort) : k === 'outcome' ? (fixed(x) ? 2 : x.outcome === 'silent' ? 0 : 1) : String(x.reason || '') }
+  ;[['When', 'ts'], ['You were on', 'parent'], ['Sent to', 'model'], ['Move', 'move'], ['Effort', 'effort'], ['Outcome', 'outcome'], ['Why', 'reason']].forEach(function (c) {
+    var on = state.rsort.k === c[1], cell = h('th', ''), btn = h('button', 'th-btn' + (on ? ' on' : ''), c[0] + (on ? (state.rsort.d > 0 ? ' ▲' : ' ▼') : '')); btn.type = 'button'
+    btn.addEventListener('click', function () { state.rsort = { k: c[1], d: on ? -state.rsort.d : (c[1] === 'ts' || c[1] === 'move' ? -1 : 1) }; drawRouter() })
+    cell.append(btn); th.append(cell)
+  })
   var tb = h('tbody'); t.append(h('thead'), tb); t.firstChild.append(th)
-  rows.slice().sort(function (a, c) { return c.ts - a.ts }).slice(0, 6).forEach(function (x) {
-    var fix = x.outcome !== 'silent' && models.some(function (m) { return m.session === x.session && m.ts > x.ts && m.ts - x.ts < 600000 }), tr = h('tr'), out = tr.appendChild(h('td'))
-    tr.prepend(h('td', '', ago(x.ts)), h('td', '', cap(modelKey(x.parent))), h('td', '', cap(modelKey(x.model))), h('td', '', x.effort || '–'))
+  rows.slice().sort(function (a, c) { var x = sortKey(a, state.rsort.k), y = sortKey(c, state.rsort.k); return (x < y ? -1 : x > y ? 1 : c.ts - a.ts) * state.rsort.d }).slice(0, 10).forEach(function (x) {
+    var fix = fixed(x), mv = rank(x.model) - rank(x.parent), tr = h('tr'), out = tr.appendChild(h('td'))
+    tr.prepend(h('td', '', ago(x.ts)), h('td', '', cap(modelKey(x.parent))), h('td', '', cap(modelKey(x.model))), h('td', '', mv > 0 ? '↑ up' : mv < 0 ? '↓ down' : 'same'), h('td', '', x.effort || '–'))
     out.append(tag(fix ? 'you switched back' : x.outcome === 'silent' ? 'kept' : 'routed', fix ? 'warn' : x.outcome === 'silent' ? '' : 'ok')); tr.append(h('td', 'why', x.reason || ''))
     tb.append(tr)
   })
@@ -315,7 +330,8 @@ function drawRouter() {
 // ---- plans ----------------------------------------------------------------------------------------------------------
 function drawPlans() {
   var ev = scopeEv(), tk = scopeTasks(), b = byId('b-plans'); b.textContent = ''
-  var projects = Array.from(new Set(tk.map(function (t) { return t.project }).concat(ev.map(function (e) { return e.project }))))
+  // Chats never carry a plan, so they would only inflate the "without PLAN.md" count.
+  var projects = Array.from(new Set(tk.map(function (t) { return t.project }).concat(ev.map(function (e) { return e.project })))).filter(function (n) { return n !== 'Chats' })
   if (!projects.length) return emptyBody('plans', 'Plans', 'No sessions in this period.')
   var p = planStats(ev, projects, now), withPlan = tk.filter(function (t) { return p.plans[t.project] }), cost = total(withPlan, function (t) { return t.cost })
   var chart = panel('Burn-up', 'Done and total items across projects with a plan, last 30 days',
@@ -370,17 +386,14 @@ function drawExtras() {
 
 // The numbers the share card carries beside the hero: projects, activity, reuse, router, plans and reviews.
 function cardTiles(list, cur) {
-  var cats = categorize(cur, EV, CFG).filter(function (p) { return p.name !== 'Chats' }), large = cats.filter(function (p) { return p.category === 'Large' }).length
-  var vals = perDay(list, days(84), METRICS.time.pick), active = vals.filter(function (v) { return v > 0 }).length, streak = 0, by = {}
+  var cats = categorize(cur, EV, CFG).filter(function (p) { return p.name !== 'Chats' })
+  var vals = perDay(list, days(84), METRICS.time.pick), active = vals.filter(function (v) { return v > 0 }).length, streak = 0
   for (var j = vals[83] > 0 ? 83 : 82; j >= 0 && vals[j] > 0; j--) streak++
-  cur.forEach(function (t) { var k = t.started.slice(0, 10); by[k] = (by[k] || 0) + t.agentMinutes })
-  var busiest = Object.keys(by).sort(function (a, b) { return by[b] - by[a] })[0], re = cur.filter(function (t) { return t.reuse != null }).map(function (t) { return t.reuse })
-  var ev = scopeEv(), r = routerStats(scopeAud(), ev), pl = planStats(ev, cats.map(function (p) { return p.name }), now), rs = runStats(ev, now)
+  var re = cur.filter(function (t) { return t.reuse != null }).map(function (t) { return t.reuse })
+  var pl = planStats(scopeEv(), cats.map(function (p) { return p.name }), now)
   function put(id, v) { byId(id).textContent = v }
-  put('c-projects', cats.length + (large ? ' · ' + large + ' large' : ''))
-  put('c-active', active + ' of 84 days'); put('c-streak', plural(streak, 'day')); put('c-busiest', busiest ? shortDate(busiest) + ' · ' + time(by[busiest] * 60000) : '–')
-  put('c-reuse', re.length ? Math.round(mean(re)) + '%' : '–'); put('c-router', r.total ? Math.round(r.stayed / r.total * 100) + '% kept' : '–')
-  put('c-plan', pl.velocity ? num1(pl.velocity) + ' items/day' : '–'); put('c-runs', rs.runs ? plural(rs.runs, 'run') : '–')
+  put('c-active', active + ' of 84 days'); put('c-streak', plural(streak, 'day'))
+  put('c-reuse', re.length ? Math.round(mean(re)) + '%' : '–'); put('c-plan', pl.velocity ? num1(pl.velocity) + ' items/day' : '–')
 }
 
 // The project switcher in the header, on every page: all projects, or one of the large ones.
@@ -404,9 +417,12 @@ function drawPicker() {
 
 // Everything the board knows, for sending to someone who will analyse it. Prompt text is never in the journal;
 // session titles come only when asked for, and project names can be hidden.
+// The sections ticked in the Export dialog.
+function chosenIds() { return Array.from(byId('export-list').querySelectorAll('input')).filter(function (c) { return c.checked }).map(function (c) { return c.value }) }
 function rawData() {
-  var titles = byId('with-titles').checked, summary = {}
-  Object.keys(EXPORTS).forEach(function (id) { summary[id] = EXPORTS[id] })
+  var titles = byId('with-titles').checked, summary = {}, ids = chosenIds()
+  var has = function () { return Array.prototype.some.call(arguments, function (x) { return ids.indexOf(x) >= 0 }) }
+  Object.keys(EXPORTS).forEach(function (id) { if (has(id)) summary[id] = EXPORTS[id] })
   var out = {
     app: BRAND, generated: new Date(now).toISOString(), scope: stamp(), titlesIncluded: titles,
     note: 'Project names are folder names; spare-, scratch-, sandbox and drive roots are grouped as Chats. Times are local to the machine that built the board.',
@@ -424,7 +440,13 @@ function rawData() {
     events: EV.map(function (e) { var o = {}; for (var k in e) if (k !== 'root') o[k] = e[k]; return o }),
     router: AUD, summary: summary
   }
-  return mask(JSON.stringify(out, null, 1), byId('hide-names').checked)
+  // Only what the ticked sections draw on: the ledger for Overview, Projects, Reuse and Extras; the journal for most others; the router log for Router.
+  out.sections = ids
+  if (!has('overview', 'projects', 'reuse', 'extras')) delete out.tasks
+  if (!has('context', 'reuse', 'router', 'plans', 'runs', 'extras')) delete out.events
+  if (!has('router')) delete out.router
+  if (byId('hide-names').checked) { var m = hideMap(); out = maskTree(out, m); out.config = maskTree(CFG, m, true); out.scope = stamp(m) }
+  return JSON.stringify(out, null, 1)
 }
 function saveRaw() { saveText(rawData(), SLUG + '-data-' + dkey(now) + '.json', 'application/json') }
 
@@ -459,11 +481,11 @@ function printIds(ids) {
 function renderSections() { drawPicker(); drawOverviewExport(); drawProjects(); drawContext(); drawReuse(); drawRouter(); drawPlans(); drawRuns(); drawExtras() }
 
 // ---- export ---------------------------------------------------------------------------------------------------------
-function mask(text, on) {
-  if (!on) return text
-  var all = Array.from(new Set(tasks.map(function (t) { return t.project }).concat(EV.map(function (e) { return e.project })))).sort(function (a, c) { return c.length - a.length })
-  all.forEach(function (n, i) { if (n) text = text.split(labelOf(n)).join('Project ' + (i + 1)); if (n && labelOf(n) !== n) text = text.split(n).join('Project ' + (i + 1)) })
-  return text
+// The names to hide, each with its alias: the folder name and its label both map to the same "Project N".
+function hideMap() {
+  var map = {}
+  Array.from(new Set(tasks.map(function (t) { return t.project }).concat(EV.map(function (e) { return e.project })))).filter(Boolean).forEach(function (n, i) { map[n] = 'Project ' + (i + 1); map[labelOf(n)] = map[n] })
+  return map
 }
 function toMd(e) {
   var out = ['## ' + e.title, '']
@@ -474,15 +496,14 @@ function toCsv(e) {
   function q(v) { v = String(v); return v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf(NL) >= 0 ? '"' + v.split('"').join('""') + '"' : v }
   return [e.headers].concat(e.rows).map(function (r) { return r.map(q).join(',') }).join(NL)
 }
-function stamp() { return dkey(now) + ' · ' + (state.project ? labelOf(state.project) : 'All projects') + ' · ' + (state.period ? 'last ' + state.period + ' days' : 'all time') }
-function allMd(ids, hide) { return mask(['# ' + BRAND, '', stamp(), ''].concat(ids.map(function (id) { return toMd(EXPORTS[id]) + NL })).join(NL), hide) }
+function stamp(map) { return dkey(now) + ' · ' + (state.project ? maskTree(labelOf(state.project), map || {}) : 'All projects') + ' · ' + (state.period ? 'last ' + state.period + ' days' : 'all time') }
+function allMd(ids, hide) { var m = hide ? hideMap() : null; return ['# ' + BRAND, '', stamp(m), ''].concat(ids.map(function (id) { return toMd(m ? maskTree(EXPORTS[id], m) : EXPORTS[id]) + NL })).join(NL) }
 function saveText(text, name, type) { download(new Blob([text], { type: type }), name) }
 function saveSection(id, fmt) {
   var e = EXPORTS[id] || { title: id, headers: [], rows: [] }
-  if (fmt === 'md') saveText(mask(toMd(e), false), 'board-' + id + '.md', 'text/markdown')
+  if (fmt === 'md') saveText(toMd(e), 'board-' + id + '.md', 'text/markdown')
   else if (fmt === 'csv') saveText(toCsv(e), 'board-' + id + '.csv', 'text/csv')
   else if (fmt === 'pdf') printIds([id])
-  else saveText(JSON.stringify({ scope: stamp(), section: e }, null, 2), 'board-' + id + '.json', 'application/json')
 }
 function copyText(text, btn, done) {
   function fallback() { var t = document.createElement('textarea'); t.value = text; document.body.append(t); t.select(); try { document.execCommand('copy') } catch (e) {} t.remove() }
@@ -494,14 +515,15 @@ function closeMenus() { document.querySelectorAll('.menu').forEach(function (m) 
 function wireExport() {
   document.querySelectorAll('[data-export]').forEach(function (btn) {
     var id = btn.getAttribute('data-export'), menu = h('div', 'menu'); menu.hidden = true
-    ;[['PDF', 'pdf'], ['Markdown', 'md'], ['CSV', 'csv'], ['JSON', 'json']].forEach(function (f) { var m = h('button', '', f[0]); m.type = 'button'; m.addEventListener('click', function () { menu.hidden = true; saveSection(id, f[1]) }); menu.append(m) })
+    ;[['PDF', 'pdf'], ['Markdown', 'md'], ['CSV', 'csv']].forEach(function (f) { var m = h('button', '', f[0]); m.type = 'button'; m.addEventListener('click', function () { menu.hidden = true; saveSection(id, f[1]) }); menu.append(m) })
     btn.parentNode.append(menu)
     btn.addEventListener('click', function (ev) { ev.stopPropagation(); var open = menu.hidden; closeMenus(); menu.hidden = !open })
   })
   document.addEventListener('click', closeMenus)
   document.querySelectorAll('[data-tab]').forEach(function (b) { b.addEventListener('click', function () { showPage(b.getAttribute('data-tab')) }) })
-  byId('export-raw').addEventListener('click', saveRaw)
-  byId('export-raw-dlg').addEventListener('click', saveRaw)
+  var shareMenu = byId('share-menu')
+  byId('share-menu-btn').addEventListener('click', function (ev) { ev.stopPropagation(); var open = shareMenu.hidden; closeMenus(); shareMenu.hidden = !open })
+  shareMenu.addEventListener('click', function () { setTimeout(closeMenus, 900) })
   var saved = 'overview'
   try { saved = localStorage.getItem('ponytail-board-page') || 'overview' } catch (e) {}
   showPage(document.querySelector('.page[data-page="' + saved + '"]') ? saved : 'overview')
@@ -511,12 +533,16 @@ function wireExport() {
     var l = h('label', 'li'), c = h('input'); c.type = 'checkbox'; c.checked = true; c.value = id
     l.append(c, h('span', '', (EXPORTS[id] ? EXPORTS[id].title : id))); list.append(l)
   })
-  function chosen() { return Array.from(list.querySelectorAll('input')).filter(function (c) { return c.checked }).map(function (c) { return c.value }) }
+  var chosen = chosenIds, allBox = byId('export-all-sections')
+  function syncAllBox() { var n = chosen().length, t = list.querySelectorAll('input').length; allBox.checked = n === t; allBox.indeterminate = n > 0 && n < t }
+  list.addEventListener('change', syncAllBox)
+  allBox.addEventListener('change', function () { list.querySelectorAll('input').forEach(function (c) { c.checked = allBox.checked }); syncAllBox() })
+  syncAllBox()
   byId('export-all').addEventListener('click', function () { dlg.showModal() })
   byId('export-close').addEventListener('click', function () { dlg.close() })
-  byId('export-pdf').addEventListener('click', function () { dlg.close(); printIds(chosen()) })
-  byId('export-md').addEventListener('click', function () { saveText(allMd(chosen(), byId('hide-names').checked), SLUG + '-board.md', 'text/markdown') })
-  byId('export-json').addEventListener('click', function () { saveText(mask(JSON.stringify({ scope: stamp(), sections: chosen().map(function (id) { return EXPORTS[id] }) }, null, 2), byId('hide-names').checked), SLUG + '-board.json', 'application/json') })
-  byId('export-copy').addEventListener('click', function (e) { copyText(allMd(chosen(), byId('hide-names').checked), e.target, 'Copied') })
+  byId('export-go').addEventListener('click', function () {
+    var fmt = dlg.querySelector('input[name=xfmt]:checked').value
+    if (fmt === 'pdf') { dlg.close(); printIds(chosen()) } else if (fmt === 'md') saveText(allMd(chosen(), byId('hide-names').checked), SLUG + '-board.md', 'text/markdown'); else saveRaw()
+  })
 }
 `

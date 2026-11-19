@@ -18,9 +18,10 @@ test('tasksFrom keeps the folder name and drops a row without a start time', () 
 test('the page has every section, the grouped buttons, the export dialog and no session table', () => {
   const html = boardHtml(tasksFrom(CSV), Date.UTC(2026, 10, 19))
   for (const id of ['projects', 'context', 'reuse', 'router', 'plans', 'runs', 'extras']) expect(html.includes(`id="sec-${id}"`)).toBe(true)
+  expect(html.includes('id="export-json"')).toBe(false)
   for (const id of ['copy-summary', 'export-all', 'share', 'export-dialog']) expect(html.includes(`id="${id}"`)).toBe(true)
   for (const id of ['overview', 'context', 'reuse', 'router', 'plans', 'runs', 'extras']) expect(html.includes(`data-page="${id}"`)).toBe(true)
-  for (const id of ['export-pdf', 'picker', 'export-raw', 'with-titles']) expect(html.includes(`id="${id}"`)).toBe(true)
+  for (const id of ['export-go', 'picker', 'share-menu', 'with-titles', 'export-all-sections']) expect(html.includes(`id="${id}"`)).toBe(true)
   expect(html.includes('@keyframes bd-rise')).toBe(true)
   for (const name of ['bd-hot', 'bd-confetti', 'bd-reveal', '#card.assemble']) expect(html.includes(name)).toBe(true)
   expect(html.includes('data-motion="rich"')).toBe(true)
@@ -51,4 +52,8 @@ test('board.json can rename the dashboard, and the name is escaped', () => {
   const html = boardHtml([], 1, { events: [], audit: [], config: { title: 'My <Board>' } })
   expect(html.includes('<title>My &lt;Board&gt;</title>')).toBe(true)
   expect(html.includes('<title>Unified Band</title>')).toBe(false)
+})
+
+test('the projects table tells you when a category is empty', () => {
+  expect(boardHtml([], 1, { events: [], audit: [], config: {} }).includes('No projects in this category.')).toBe(true)
 })

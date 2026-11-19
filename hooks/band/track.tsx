@@ -18,7 +18,7 @@ import {
   isSource,
   isTestCommand,
   mainModel,
-  MODEL_PATTERN,
+  lastCache,
   parseDefs,
   percent,
   resume,
@@ -101,12 +101,15 @@ async function readTitle($: EngineInterface, transcript: string): Promise<string
   return sessionTitle(text)
 }
 
-// The model that wrote most of the session's replies, so the board can tell models apart.
-async function readModel($: EngineInterface, transcript: string): Promise<string> {
+// The end of the transcript. grep is not on Windows and $.fs.read refuses a file over 4 MiB, so node reads the tail itself.
+// shortcut: the last 512 KiB only, so the model is the one of the recent replies; a node-less machine reads the whole file when it is small enough.
+const TAIL_BYTES = 524288
+const TAIL_SCRIPT =
+  "const fs=require('fs');const f=fs.openSync(process.argv[1],'r');const s=fs.fstatSync(f).size;const b=Buffer.alloc(Math.min(Number(process.argv[2]),s));fs.readSync(f,b,0,b.length,s-b.length);process.stdout.write(b.toString('utf8'))"
+async function readTail($: EngineInterface, transcript: string): Promise<string> {
   if (transcript === '') return ''
-  const grep = await $.process.run(['grep', '-o', MODEL_PATTERN, transcript]).catch(() => undefined)
-  // Without grep (Windows) the transcript itself is read, which works up to the 4 MiB the engine allows.
-  return mainModel(grep?.exitCode === 0 ? grep.stdout : await $.fs.read(transcript).catch(() => ''))
+  const run = await $.process.run(['node', '-e', TAIL_SCRIPT, transcript, String(TAIL_BYTES)]).catch(() => undefined)
+  return run?.exitCode === 0 ? run.stdout : await $.fs.read(transcript).catch(() => '')
 }
 
 // Where Claude Code keeps the session's transcript: on managed, Team and Enterprise machines its cc-plugin-sec-default skips every classic.* hook, so no hook hands the path over.
@@ -133,7 +136,8 @@ async function ledgerDir($: EngineInterface) {
   return `${(await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`}/ponytail/band`
 }
 
-const ledgerFile = (dir: string, project: string) => `${dir}/${project.replace(/[^\w.-]/g, '_')}.csv`
+// One file per project and session: two sessions of a project never write the same file. writeBoard merges them all.
+const ledgerFile = (dir: string, project: string, session: string) => `${dir}/${project.replace(/[^\w.-]/g, '_')}-${session.slice(0, 8).replace(/[^\w-]/g, '_')}.csv`
 
 // After every turn: the task's row in a CSV per project, and the same row to a webhook if one is set.
 async function record($: EngineInterface, b: Band, options: Options) {
@@ -141,12 +145,11 @@ async function record($: EngineInterface, b: Band, options: Options) {
   const row = snapshot(b, startedAt)
   if (options.ledger !== false && b.project !== '') {
     const dir = await ledgerDir($)
-    const file = ledgerFile(dir, b.project)
-    const existing = await $.fs.read(file).catch(() => '')
+    const file = ledgerFile(dir, b.project, b.session)
+    // A read that fails on a file that exists must not turn into an overwrite.
+    const existing = (await $.fs.exists(file)) ? await $.fs.read(file).catch(() => undefined) : ''
     // $.fs.write creates the directory: no mkdir, which Windows does not have.
-    await $.fs.write(file, upsertCsv(existing, row))
-    // The board is a plain file a refresh rereads, so it is rebuilt with every row.
-    await writeBoard($, dir)
+    if (existing !== undefined) await $.fs.write(file, upsertCsv(existing, row))
   }
   const url = typeof options.webhookUrl === 'string' ? options.webhookUrl.trim() : ''
   if (url !== '') {
@@ -164,12 +167,12 @@ async function record($: EngineInterface, b: Band, options: Options) {
   }
 }
 
-// Builds board.html from every project's ledger.
+// Builds board.html from every ledger file; a row that sits in two files (an older ledger) counts once.
 export async function writeBoard($: EngineInterface, dir: string) {
   const entries = await $.fs.list(dir).catch(() => [])
   const texts = await Promise.all(entries.filter(f => f.kind === 'file' && f.name.endsWith('.csv')).map(f => $.fs.read(`${dir}/${f.name}`).catch(() => '')))
   const file = `${dir}/board.html`
-  await $.fs.write(file, boardHtml(texts.flatMap(tasksFrom), await $.clock.now(), await boardExtra($).catch(() => undefined)))
+  await $.fs.write(file, boardHtml([...new Map(texts.flatMap(tasksFrom).map(t => [t.key, t])).values()], await $.clock.now(), await boardExtra($).catch(() => undefined)))
   return file
 }
 
@@ -183,7 +186,7 @@ async function start($: EngineInterface): Promise<Map<string, string>> {
   const session = await $.session.id()
   // The cost so far is the baseline for the last turn's own cost.
   const usage = await $.session.usage().catch(() => undefined)
-  const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project)).catch(() => '') : ''
+  const csv = usage ? await $.fs.read(ledgerFile(await ledgerDir($), project, session)).catch(() => '') : ''
   const key = usage ? taskKey(session, usage.startedAt) : ''
   await update($, band, b => resume({ ...EMPTY, ...b, level, details, project, session, cost: usage?.cost?.usd ?? b.cost }, csv, key))
   return grep?.exitCode === 0 ? parseDefs(grep.stdout) : new Map()
@@ -285,7 +288,8 @@ export const track: Register = (on, options) => {
     const kept = base(saved) === `${session}.jsonl` && (await $.fs.exists(saved).catch(() => false))
     const transcript = kept ? saved : await findTranscript($, session)
     const title = await readTitle($, transcript)
-    const model = await readModel($, transcript)
+    const tail = await readTail($, transcript)
+    const model = mainModel(tail)
 
     // A removed or renamed definition that is not defined again but still called somewhere.
     // shortcut: name match with git grep, so a same-named call in another module counts too.
@@ -326,7 +330,7 @@ export const track: Register = (on, options) => {
       }
     })
     await record($, b, options).catch(() => $.ui.status('unified band: could not write the task ledger'))
-    await afterTurn($, e, options, b)
+    await afterTurn($, e, options, b, lastCache(tail))
 
     return next(e)
   }).catch(($, e, next) => next(e))

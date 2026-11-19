@@ -44,3 +44,23 @@ test('boardExtra with no journal, no router log and no board.json gives empty da
   expect([r.events.length, r.audit.length]).toEqual([0, 0])
   expect(r.config).toEqual({})
 })
+
+test('a broken board.json costs only the config, not the journal', async () => {
+  const files: Record<string, string> = {
+    '/cfg/ponytail/band/events-2026-11-19-s.jsonl': '{"t":"turn","ts":1}\n',
+    '/cfg/ponytail/band/board.json': '{"title": ,}',
+  }
+  const $ = {
+    env: { get: async (name: string) => (name === 'XDG_CONFIG_HOME' ? '/cfg' : name === 'HOME' ? '/home' : undefined) },
+    fs: {
+      list: async () => [{ name: 'events-2026-11-19-s.jsonl', kind: 'file' }],
+      read: async (path: string) => {
+        if (path in files) return files[path]
+        throw new Error('missing')
+      },
+    },
+  } as never
+  const r = await boardExtra($)
+  expect(r.events.length).toBe(1)
+  expect(r.config).toEqual({})
+})
