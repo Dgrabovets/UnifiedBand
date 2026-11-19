@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import { boardHtml, tasksFrom } from './board'
 import type { Band } from '../../types'
-import { afterStart, afterTurn } from './live'
+import { afterPrompt, afterStart, afterTurn, countEdit } from './live'
 import {
   GREP_DEFS,
   NO_TOKENS,
@@ -223,6 +223,7 @@ export const track: Register = (on, options) => {
       const name = (text.split('\n')[0] ?? '').slice(0, 60)
       await update($, band, b => (b.name === '' ? { ...EMPTY, ...b, name } : b))
     }
+    await afterPrompt($, e)
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -246,6 +247,7 @@ export const track: Register = (on, options) => {
     const after = e.tool === 'Write' ? e.content : e.new_string
     const ran = await next(e)
     if (ran.deny !== undefined || ran.isError) return ran
+    countEdit()
 
     const oldDefs = defsIn(file, before)
     const newDefs = defsIn(file, after)
@@ -322,7 +324,7 @@ export const track: Register = (on, options) => {
       }
     })
     await record($, b, options).catch(() => $.ui.status('unified band: could not write the task ledger'))
-    await afterTurn($, e, options)
+    await afterTurn($, e, options, b)
 
     return next(e)
   }).catch(($, e, next) => next(e))

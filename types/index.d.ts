@@ -39,7 +39,7 @@ export type Live = {
   prompts: number
   compactions: number
   lastTurn?: { ms: number; cache?: number; at: number }
-  router?: { total: number; routed: number; last?: { model: string; effort: string; reason: string; outcome: string; at: number } }
+  router?: { total: number; routed: number; last?: { model: string; parent: string; tier: string; confidence: number; effort: string; reason: string; outcome: string; at: number } }
 }
 
 declare module 'claude-code' {

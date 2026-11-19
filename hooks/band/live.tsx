@@ -1,7 +1,8 @@
-import { atom, update } from 'claude-code'
+import { atom, read, update } from 'claude-code'
 import type { EngineInterface, TurnCompleteInput } from 'claude-code'
 
-import type { Live } from '../../types'
+import type { Band, Live } from '../../types'
+import { NEGATIVE, RESULT, baseName, logEvent } from './events'
 
 type Options = { readonly [field: string]: unknown }
 
@@ -34,6 +35,9 @@ async function readRouter($: EngineInterface): Promise<Live['router']> {
     routed: rows.filter(r => r.outcome !== 'silent').length,
     last: last && {
       model: String(last.decision?.model ?? ''),
+      parent: String(last.decision?.parent ?? ''),
+      tier: String(last.decision?.tier ?? ''),
+      confidence: Number(last.decision?.confidence ?? 0),
       effort: String(last.decision?.effort ?? ''),
       reason: String(last.decision?.reason ?? ''),
       outcome: String(last.outcome ?? ''),
@@ -68,12 +72,36 @@ export async function refresh($: EngineInterface, options: Options) {
 }
 
 
+// A review or audit asked for in this turn, and the edits made in it. Both start over when the turn ends.
+let pendingRun: 'review' | 'audit' | undefined
+let edits = 0
+
+// Called by the tool hook for every edit that lands in the project.
+export const countEdit = () => {
+  edits += 1
+}
+
 // Runs when a session starts or a turn ends: the part of the band that is not Ponytail's tracking.
 export async function afterStart($: EngineInterface, options: Options) {
   await refresh($, options)
 }
 
-export async function afterTurn($: EngineInterface, e: TurnCompleteInput, options: Options) {
+async function where($: EngineInterface) {
+  const l = await read($, live)
+  return { session: await $.session.id(), project: baseName(l.root), root: l.root, ts: await $.clock.now() }
+}
+
+// A prompt: whether a review or audit was asked for, and whether it was a short push back on the last answer.
+export async function afterPrompt($: EngineInterface, e: { text: string }) {
+  const text = e.text.trim()
+  const run = /^[/@$](?:unified-band:)?ponytail-(review|audit)\b/.exec(text)
+  if (run) pendingRun = run[1] === 'audit' ? 'audit' : 'review'
+  if (text === '' || text.startsWith('/')) return
+  const words = text.split(/\s+/).length
+  await logEvent($, { t: 'prompt', ...(await where($)), words, neg: words <= 6 && NEGATIVE.test(text) })
+}
+
+export async function afterTurn($: EngineInterface, e: TurnCompleteInput, options: Options, b: Band) {
   await refresh($, options)
   // A subagent's turn is not the session's last turn.
   if (e.agentId !== undefined) return
@@ -81,4 +109,56 @@ export async function afterTurn($: EngineInterface, e: TurnCompleteInput, option
   const total = u ? u.input + u.cacheRead + u.cacheWrite : 0
   const at = await $.clock.now()
   await update($, live, l => ({ ...l, lastTurn: { ms: e.durationMs, cache: total > 0 && u ? Math.round((u.cacheRead / total) * 100) : undefined, at } }))
+
+  const l = await read($, live)
+  const w = { session: b.session, project: baseName(l.root), root: l.root, ts: at }
+  const five = l.limits.find(x => x.kind === 'five_hour')
+  const seven = l.limits.find(x => x.kind === 'seven_day')
+  const hit = RESULT.exec(e.text ?? '')
+  const kind = hit ? hit[1] : pendingRun
+  await logEvent($, {
+    t: 'turn',
+    ...w,
+    ms: e.durationMs,
+    cost: b.spent,
+    turns: b.turns,
+    level: b.level,
+    model: b.model,
+    ctx: l.context,
+    five: five?.percentUsed,
+    fiveReset: five?.resetsAt,
+    seven: seven?.percentUsed,
+    sevenReset: seven?.resetsAt,
+    compactions: l.compactions,
+    cache: total > 0 && u ? Math.round((u.cacheRead / total) * 100) : undefined,
+    tests: b.tests.state,
+    reused: b.reused.length,
+    created: b.created.length,
+    callers: b.openCallers.length,
+    edits,
+    plan: l.tasks ?? undefined,
+    router: l.router?.last,
+  })
+  if (kind) {
+    await logEvent($, {
+      t: 'run',
+      ...w,
+      kind,
+      ms: e.durationMs,
+      findings: hit ? Number(hit[2]) : undefined,
+      high: hit && hit[3] !== undefined ? Number(hit[3]) : undefined,
+      edits,
+    })
+  }
+  pendingRun = undefined
+  edits = 0
+}
+
+export async function afterCompact($: EngineInterface) {
+  const l = await read($, live)
+  await logEvent($, { t: 'compact', ...(await where($)), ctx: l.context })
+}
+
+export async function afterModelCommand($: EngineInterface, args: string) {
+  await logEvent($, { t: 'model', ...(await where($)), arg: args.trim().slice(0, 40) })
 }

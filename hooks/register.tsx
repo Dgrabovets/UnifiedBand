@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Live } from '../types'
-import { EMPTY_LIVE, refresh } from './band/live'
+import { EMPTY_LIVE, afterCompact, afterModelCommand, refresh } from './band/live'
 import { track } from './band/track'
 
 const NAME = 'unified-band'
@@ -73,6 +73,13 @@ export const register: Register = (on, options) => {
 
   on('session.compact', async ($, e, next) => {
     await update($, live, l => ({ ...l, compactions: l.compactions + 1 }))
+    await afterCompact($)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  // A /model command is how a person overrides the router, so it goes in the journal.
+  on('command.run', { command: 'model' }, async ($, e, next) => {
+    await afterModelCommand($, e.args ?? '')
     return next(e)
   }).catch(($, e, next) => next(e))
 
