@@ -24,6 +24,9 @@ export const SECTION_NAV = SECTIONS.map(([id, title]) => `<button type="button" 
 
 export const SECTIONS_CSS = `
 .page{display:none;flex-direction:column;gap:14px}.page.on{display:flex}
+.heat-head{margin-bottom:6px}.heat-body{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:32px;align-items:start}.heat-map{min-width:0}#heat{max-width:520px;margin:0 auto}.heat-side{min-width:0}.heat .heroes{margin-top:4px}
+.picker{position:relative}.picker .menu{left:0;right:auto;min-width:220px}.menu .note{padding:6px 10px;margin:0}
+@media (max-width:1100px){.heat-body{grid-template-columns:minmax(0,1fr)}}
 .kpis{margin-bottom:0}.chart-card,.sec{margin-bottom:0}
 .kpi>*{position:relative;z-index:1}.kpi::after{z-index:0}
 #stream{overflow:hidden}.lines{overflow:hidden}
@@ -348,6 +351,51 @@ function cardTiles(list, cur) {
   put('c-plan', pl.velocity ? num1(pl.velocity) + ' items/day' : '–'); put('c-runs', rs.runs ? plural(rs.runs, 'run') : '–')
 }
 
+// The project switcher in the header, on every page: all projects, or one of the large ones.
+var pickerMenu = null
+function drawPicker() {
+  var btn = byId('picker'), large = categorize(tasks, EV, CFG).filter(function (p) { return p.category === 'Large' })
+  btn.textContent = (state.project ? labelOf(state.project) : 'All projects') + ' ▾'
+  if (!pickerMenu) {
+    pickerMenu = h('div', 'menu'); pickerMenu.hidden = true; btn.parentNode.append(pickerMenu)
+    btn.addEventListener('click', function (ev) { ev.stopPropagation(); var open = pickerMenu.hidden; closeMenus(); pickerMenu.hidden = !open })
+  }
+  pickerMenu.textContent = ''
+  ;[['', 'All projects']].concat(large.map(function (p) { return [p.name, labelOf(p.name)] })).forEach(function (it) {
+    var b = h('button', '', it[1]); b.type = 'button'
+    if (it[0] === state.project) b.style.fontWeight = '600'
+    b.addEventListener('click', function () { pickerMenu.hidden = true; state.project = it[0]; state.hidden = {}; render() })
+    pickerMenu.append(b)
+  })
+  if (!large.length) pickerMenu.append(h('div', 'note', 'No large project yet'))
+}
+
+// Everything the board knows, for sending to someone who will analyse it. Prompt text is never in the journal;
+// session titles come only when asked for, and project names can be hidden.
+function rawData() {
+  var titles = byId('with-titles').checked, summary = {}
+  Object.keys(EXPORTS).forEach(function (id) { summary[id] = EXPORTS[id] })
+  var out = {
+    app: 'ponytail board', generated: new Date(now).toISOString(), scope: stamp(), titlesIncluded: titles,
+    note: 'Project names are folder names; spare-, scratch-, sandbox and drive roots are grouped as Chats. Times are local to the machine that built the board.',
+    schema: {
+      tasks: 'one row per session: key, started (local), project, cost in USD (API price, not a bill), turns, agentMinutes, tokens, reuse percent or null, tests, level, model',
+      events: 'journal, one object per event. t=turn: ts, session, project, ms, cost, turns, level, model, ctx percent, five and seven limit percent with their reset times, compactions, cache percent, tests, reused, created, callers, edits, plan {done,total}, router. t=prompt: words, neg (a short push back). t=compact: ctx. t=model: a /model command. t=run: kind review or audit, findings, high. t=agent: subagent turn, tokens',
+      router: 'one object per classified prompt: ts, session, parent (your model), model (chosen), effort, tier, conf, outcome (silent or routed), reason'
+    },
+    config: CFG,
+    tasks: tasks.map(function (t) {
+      var o = { key: t.key, started: t.started, project: t.project, cost: t.cost, turns: t.turns, agentMinutes: t.agentMinutes, tokens: t.tokens, reuse: t.reuse, tests: t.tests, level: t.level, model: t.model }
+      if (titles) o.name = t.name
+      return o
+    }),
+    events: EV.map(function (e) { var o = {}; for (var k in e) if (k !== 'root') o[k] = e[k]; return o }),
+    router: AUD, summary: summary
+  }
+  return mask(JSON.stringify(out, null, 1), byId('hide-names').checked)
+}
+function saveRaw() { saveText(rawData(), 'ponytail-data-' + dkey(now) + '.json', 'application/json') }
+
 // One page at a time: the nav and the remembered choice follow it.
 function showPage(id) {
   document.querySelectorAll('.page').forEach(function (p) { p.classList.toggle('on', p.getAttribute('data-page') === id) })
@@ -365,7 +413,7 @@ function printIds(ids) {
   window.print()
 }
 
-function renderSections() { drawOverviewExport(); drawProjects(); drawContext(); drawReuse(); drawRouter(); drawPlans(); drawRuns(); drawExtras() }
+function renderSections() { drawPicker(); drawOverviewExport(); drawProjects(); drawContext(); drawReuse(); drawRouter(); drawPlans(); drawRuns(); drawExtras() }
 
 // ---- export ---------------------------------------------------------------------------------------------------------
 function mask(text, on) {
@@ -409,7 +457,8 @@ function wireExport() {
   })
   document.addEventListener('click', closeMenus)
   document.querySelectorAll('[data-tab]').forEach(function (b) { b.addEventListener('click', function () { showPage(b.getAttribute('data-tab')) }) })
-  byId('back').addEventListener('click', function () { state.project = ''; state.hidden = {}; render() })
+  byId('export-raw').addEventListener('click', saveRaw)
+  byId('export-raw-dlg').addEventListener('click', saveRaw)
   var saved = 'overview'
   try { saved = localStorage.getItem('ponytail-board-page') || 'overview' } catch (e) {}
   showPage(document.querySelector('.page[data-page="' + saved + '"]') ? saved : 'overview')

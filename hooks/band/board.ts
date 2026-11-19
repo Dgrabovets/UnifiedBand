@@ -265,7 +265,6 @@ const APP = `(function () {
     var list = scope(), name = state.project ? labelOf(state.project) : 'All projects', f = first(list)
     byId('crumb').textContent = state.project ? 'Projects / ' + name : name
     byId('title').textContent = name
-    byId('back').hidden = !state.project
     byId('subtitle').textContent = plural(list.length, 'session') + (f ? ' since ' + shortDate(f.slice(0, 10)) + ', ' + f.slice(0, 4) : '') + (state.project ? '' : ' · ' + plural(new Set(list.map(function (t) { return t.project })).size, 'project'))
   }
 
@@ -526,21 +525,21 @@ export function boardHtml(tasks: Task[], now: number, extra: BoardExtra = { even
 <div class="app">
 <aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>ponytail</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
 <main>
-<div class="top"><div><button type="button" class="btn sm" id="back" hidden>← All projects</button><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
-<div class="actions"><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="grp" role="group" aria-label="Export"><button type="button" id="copy-summary">Copy summary</button><button type="button" id="export-all">Export all</button><button type="button" id="share">Share card</button></div></div></div>
+<div class="top"><div><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
+<div class="actions"><div class="picker"><button type="button" class="btn" id="picker" aria-haspopup="menu">All projects ▾</button></div><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="grp" role="group" aria-label="Export"><button type="button" id="copy-summary">Copy summary</button><button type="button" id="export-all">Export all</button><button type="button" id="export-raw">Raw data</button><button type="button" id="share">Share card</button></div></div></div>
 <div class="page on" data-page="overview">
 <section class="kpis" id="kpis"></section>
 <section class="card chart-card"><div class="chart-head"><div><div class="label" id="chart-sub"></div><div class="big num" id="chart-total"></div></div>
 <div class="seg" role="group" aria-label="Metric">${seg('metric', [['time', 'Agent time'], ['cost', 'Cost'], ['tokens', 'Tokens']], 'time')}</div></div>
 <div class="chart-wrap"><svg id="stream" role="img" aria-label="Per project and day"></svg><div class="tip" id="tip" hidden></div></div><div class="legend" id="legend"></div></section>
-<section class="card heat"><h3>Activity</h3><div class="sub">Agent time per day, last 12 weeks</div><svg id="heat" role="img" aria-label="Agent time per day, last 12 weeks"></svg>
+<section class="card heat"><div class="heat-head"><h3>Activity</h3><div class="sub">Agent time per day, last 12 weeks</div></div><div class="heat-body"><div class="heat-map"><svg id="heat" role="img" aria-label="Agent time per day, last 12 weeks"></svg></div><div class="heat-side">
 <div class="heroes"><div><div class="hero-label"><i style="color:#5fe08a">✦</i>Active days</div><div class="hero-value num" id="h-active"></div><div class="hero-sub" id="h-active-sub"></div></div>
-<div><div class="hero-label"><i style="color:#ffd166">◆</i>Streak</div><div class="hero-value num" id="h-streak"></div><div class="hero-sub" id="h-streak-sub"></div></div></div><div id="facts"></div></section>
+<div><div class="hero-label"><i style="color:#ffd166">◆</i>Streak</div><div class="hero-value num" id="h-streak"></div><div class="hero-sub" id="h-streak-sub"></div></div></div><div id="facts"></div></div></div></section>
 </div>
 ${['projects', 'context', 'reuse', 'router', 'plans', 'runs', 'extras'].map(id => `<div class="page" data-page="${id}">${sectionHtml(id)}</div>`).join('\n')}
 <footer>Measured by ponytail's band in Claude Code. Cost is the API-priced cost Claude Code reports (/cost), not a bill. Nothing here is estimated.</footer>
 </main></div>
-<dialog id="export-dialog"><div class="dlg-head"><b>Export all</b><div class="dlg-actions"><button type="button" class="btn" id="export-pdf">PDF</button><button type="button" class="btn" id="export-md">Markdown</button><button type="button" class="btn" id="export-json">JSON</button><button type="button" class="btn" id="export-copy">Copy</button><button type="button" class="btn" id="export-close">Close</button></div></div><div class="dlg-body"><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label></div></dialog>
+<dialog id="export-dialog"><div class="dlg-head"><b>Export all</b><div class="dlg-actions"><button type="button" class="btn" id="export-raw-dlg">Raw data</button><button type="button" class="btn" id="export-pdf">PDF</button><button type="button" class="btn" id="export-md">Markdown</button><button type="button" class="btn" id="export-json">JSON</button><button type="button" class="btn" id="export-copy">Copy</button><button type="button" class="btn" id="export-close">Close</button></div></div><div class="dlg-body"><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label><label class="li"><input type="checkbox" id="with-titles"><span>Include session titles (the first words of each prompt)</span></label></div></dialog>
 <dialog id="share-dialog"><div class="dlg-head"><b>Share card</b><div class="dlg-actions"><button type="button" class="btn" id="save-png">Save PNG</button><button type="button" class="btn" id="save-svg">Save SVG</button><button type="button" class="btn" id="share-close">Close</button></div></div><div class="dlg-body">${CARD}</div></dialog>
 <script type="application/json" id="board-data">${json({ now, tasks, ...extra })}</script>
 <script>${APP}</script></body></html>`
