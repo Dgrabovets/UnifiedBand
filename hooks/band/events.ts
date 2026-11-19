@@ -52,6 +52,8 @@ export async function boardExtra($: EngineInterface) {
     .flatMap(line => {
       try {
         const r = JSON.parse(line)
+        // Outcome rows (a delegated worker, a reconciled decision) carry no decision and are not prompts.
+        if (!r.decision) return []
         return [{ ts: Date.parse(r.ts), session: r.session_id, parent: r.decision?.parent, model: r.decision?.model, effort: r.decision?.effort, tier: r.decision?.tier, conf: r.decision?.confidence, outcome: r.outcome, reason: r.decision?.reason }]
       } catch {
         return []

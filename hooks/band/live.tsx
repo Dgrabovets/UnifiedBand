@@ -26,7 +26,8 @@ async function readRouter($: EngineInterface): Promise<Live['router']> {
         return []
       }
     })
-    .filter(r => r.session_id === id)
+    // The log also holds outcome rows (a delegated worker, a reconciled decision) that carry no decision.
+    .filter(r => r.session_id === id && r.decision)
   const last = rows[rows.length - 1]
   return {
     total: rows.length,

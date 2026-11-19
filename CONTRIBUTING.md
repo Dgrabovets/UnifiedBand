@@ -21,6 +21,7 @@ The same three checks run in CI (`.github/workflows/ci.yml`). Run them from the 
 ```
 claude plugin validate .
 claude plugin test .
+node scripts/router-edge.mjs
 node scripts/smoke-board.mjs out.html
 ```
 

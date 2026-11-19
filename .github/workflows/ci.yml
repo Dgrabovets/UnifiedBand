@@ -39,6 +39,10 @@ jobs:
       - name: Run the tests
         run: claude plugin test .
 
+      # Runs the router hooks the way hooks.json does: bad input, UTF-8, rotation, concurrency, opt-outs, latency.
+      - name: Check the router hooks
+        run: node scripts/router-edge.mjs
+
       # Builds the Board page from synthetic data and runs its script against a stand-in DOM.
       - name: Smoke-test the Board page
         run: node scripts/smoke-board.mjs "$RUNNER_TEMP/board.html"

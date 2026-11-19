@@ -221,6 +221,9 @@ Port auto-model-router 0.9.2 into this mod, in Node, so it needs no separate ins
 - [x] `LICENSE-ROUTER`, README Requirements, Credits and a Model router section
 - [ ] Run the hooks inside a real Claude Code session (not done in this stage)
 - [ ] `/router-report` and the Python report tools (left out on purpose)
+- [x] Full check of the router: the differential run again, edge cases (bad input, UTF-8, rotation, concurrency, opt-outs, latency) in `scripts/router-edge.mjs`, and a live run in a real Claude Code session (a forced `#model=haiku` delegation reached the `unified-band:router-haiku` worker and left its audit rows)
+- [x] Fixed what the check found: the conflict guard let "any settings file says enabled" win instead of the narrowest one, and the band and the Board counted outcome rows as decisions
+
 
 ## Decisions
 

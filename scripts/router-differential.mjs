@@ -131,15 +131,18 @@ function runAgentScenario(kind) {
 }
 
 // The conflict guard: with the original plugin enabled in settings, the port writes and says nothing.
-function guardRows(enabledPlugins, scope) {
+// `layers` is a list of [scope, enabledPlugins]: the narrower settings win over the wider ones, as in Claude Code.
+function guardRows(layers) {
   const dir = mkdtempSync(join(tmpdir(), 'router-diff-guard-'))
   try {
     const claude = join(dir, 'claude')
     const project = join(dir, 'project')
     mkdirSync(claude)
     mkdirSync(join(project, '.claude'), { recursive: true })
-    const settings = scope === 'user' ? join(claude, 'settings.json') : join(project, '.claude', scope === 'project' ? 'settings.json' : 'settings.local.json')
-    writeFileSync(settings, JSON.stringify({ enabledPlugins }))
+    for (const [scope, enabledPlugins] of layers) {
+      const settings = scope === 'user' ? join(claude, 'settings.json') : join(project, '.claude', scope === 'project' ? 'settings.json' : 'settings.local.json')
+      writeFileSync(settings, JSON.stringify({ enabledPlugins }))
+    }
     const env = { ...process.env, CC_ROUTER_CACHE_DIR: join(dir, 'cache'), CC_ROUTER_GLOBAL_CONFIG: join(dir, 'none.json'), CLAUDE_CONFIG_DIR: claude }
     delete env.CC_ROUTER_DISABLE
     env.CLAUDE_PROJECT_DIR = project
@@ -204,13 +207,24 @@ if (!hooksMode) {
   if (!agentSame) console.log(JSON.stringify({ python: pyLines, node: jsLines }, null, 1))
 
   const on = { 'auto-model-router@auto-model-router-mp': true }
+  const off = { 'auto-model-router@auto-model-router-mp': false }
   const guard = [
-    ['user', on, '0|false|false'],
-    ['project', on, '0|false|false'],
-    ['local', on, '0|false|false'],
-    ['user', { 'auto-model-router@auto-model-router-mp': false }, '0|true|true'],
-    ['user', { 'other@market': true }, '0|true|true'],
-  ].map(([scope, plugins, want]) => `${scope}: ${guardRows(plugins, scope) === want ? 'ok' : 'WRONG ' + guardRows(plugins, scope)}`)
-  console.log(`conflict guard: ${guard.join(', ')}`)
+    ['user on', [['user', on]], '0|false|false'],
+    ['project on', [['project', on]], '0|false|false'],
+    ['local on', [['local', on]], '0|false|false'],
+    ['user off', [['user', off]], '0|true|true'],
+    ['another plugin', [['user', { 'other@market': true }]], '0|true|true'],
+    ['nothing set', [], '0|true|true'],
+    ['user on, project off', [['user', on], ['project', off]], '0|true|true'],
+    ['user off, project on', [['user', off], ['project', on]], '0|false|false'],
+    ['user on, local off', [['user', on], ['local', off]], '0|true|true'],
+    ['project on, local off', [['project', on], ['local', off]], '0|true|true'],
+    ['user off, project on, local off', [['user', off], ['project', on], ['local', off]], '0|true|true'],
+    ['user on, project off, local on', [['user', on], ['project', off], ['local', on]], '0|false|false'],
+  ].map(([name, layers, want]) => {
+    const got = guardRows(layers)
+    return `${name}: ${got === want ? 'ok' : 'WRONG ' + got}`
+  })
+  console.log(`conflict guard:${guard.map(g => '\n  ' + g).join('')}`)
   process.exit(bad.length || !agentSame || guard.some(g => g.includes('WRONG')) ? 1 : 0)
 }

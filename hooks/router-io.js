@@ -45,24 +45,26 @@ const now = () => new Date().toISOString().replace(/Z$/, '000+00:00');
 const sha = text => crypto.createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 12);
 const newId = () => crypto.randomBytes(5).toString('hex');
 
-// Both routers enabled would run every hook twice. When the original plugin is enabled in the
-// user, project or local settings, this one steps back and leaves everything to it.
+// Both routers enabled would run every hook twice. When the original plugin is enabled, this one steps back and
+// leaves everything to it. Claude Code lets the narrower settings win (local over project over user), so the
+// first of those files that names the original decides: it can be switched off for one project.
 // shortcut: only the project root (CLAUDE_PROJECT_DIR or the hook's cwd) is checked, not parent folders or managed settings.
 function originalEnabled() {
   const project = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const files = [
-    path.join(getClaudeDir(), 'settings.json'),
-    path.join(project, '.claude', 'settings.json'),
     path.join(project, '.claude', 'settings.local.json'),
+    path.join(project, '.claude', 'settings.json'),
+    path.join(getClaudeDir(), 'settings.json'),
   ];
-  return files.some(file => {
+  for (const file of files) {
+    let named = [];
     try {
       const plugins = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '')).enabledPlugins;
-      return Object.entries(plugins || {}).some(([id, on]) => id.startsWith(ORIGINAL_PLUGIN) && on === true);
-    } catch (e) {
-      return false;
-    }
-  });
+      named = Object.entries(plugins || {}).filter(([id]) => id.startsWith(ORIGINAL_PLUGIN));
+    } catch (e) {}
+    if (named.length) return named.some(([, on]) => on === true);
+  }
+  return false;
 }
 
 function disabled() {
