@@ -412,14 +412,20 @@ const APP = `(function () {
     var real = projects.filter(function (p) { return p !== 'Chats' })
     byId('c-sub').textContent = plural(real.length, 'project') + (projects.length > real.length ? ' and chats' : '') + ' · ' + money(total(cur, METRICS.cost.pick)) + ' · ' + time(total(cur, METRICS.time.pick)) + ' of agent time'
     cardTiles(list, cur)
-    // One bar per day of the period: plain rounded bars draw the same way for 7 days or for a year.
-    var g = byId('c-stream'), W = 1056, left = 72, base = 590, topY = 468; g.textContent = ''
-    var vals = perDay(cur, keys, METRICS.time.pick), max = Math.max.apply(null, vals.concat([0]))
-    if (max <= 0) return
-    var step = W / n, bw = Math.max(1.5, step * (n > 60 ? .8 : .7))
-    vals.forEach(function (v, i) {
-      var h = v > 0 ? Math.max(4, v / max * (base - topY)) : 2
-      svg('rect', { x: (left + i * step + (step - bw) / 2).toFixed(1), y: (base - h).toFixed(1), width: bw.toFixed(1), height: h.toFixed(1), rx: Math.min(bw / 2, 5), fill: v > 0 ? '#5fe08a' : '#242422', opacity: v > 0 ? .45 + .55 * v / max : 1 }, g)
+    // Two panels, one bar per day: plain rounded bars draw the same way for 7 days or for a year, and each panel names its own maximum.
+    var g = byId('c-stream'); g.textContent = ''
+    var PANELS = [['Cost per day', METRICS.cost.pick, money, '#5fe08a', 72], ['Tokens per day', METRICS.tokens.pick, tok, '#7c8cff', 624]]
+    PANELS.forEach(function (pn) {
+      var vals = perDay(cur, keys, pn[1]), max = Math.max.apply(null, vals.concat([0])), left = pn[4], W = 504, base = 580, topY = 506
+      var put = function (x, y, anchor, size, text) { var t = svg('text', { x: x, y: y, 'text-anchor': anchor, 'font-size': size, fill: '#8d8b84', 'font-family': '${MONO_CSS}' }, g); t.textContent = text }
+      put(left, 490, 'start', 16, pn[0]); put(left + W, 490, 'end', 16, max > 0 ? 'max ' + pn[2](max) : 'no data')
+      put(left, 600, 'start', 13, shortDate(keys[0])); put(left + W, 600, 'end', 13, shortDate(keys[n - 1]))
+      if (max <= 0) return
+      var step = W / n, bw = Math.max(1.5, step * (n > 60 ? .8 : .7))
+      vals.forEach(function (v, i) {
+        var h = v > 0 ? Math.max(4, v / max * (base - topY)) : 2
+        svg('rect', { x: (left + i * step + (step - bw) / 2).toFixed(1), y: (base - h).toFixed(1), width: bw.toFixed(1), height: h.toFixed(1), rx: Math.min(bw / 2, 4), fill: v > 0 ? pn[3] : '#242422', opacity: v > 0 ? .45 + .55 * v / max : 1 }, g)
+      })
     })
   }
 
@@ -484,7 +490,7 @@ const tile = (x: number, y: number, label: string, id: string) =>
 const cardSvg = (name: string) => `<svg id="card" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" font-family="${SANS}">
 <defs><radialGradient id="chalo" cx=".62" cy=".8" r=".6"><stop offset="0" stop-color="#5fe08a" stop-opacity=".16"/><stop offset="1" stop-color="#5fe08a" stop-opacity="0"/></radialGradient></defs>
 <rect width="1200" height="630" fill="#070707"/><rect width="1200" height="630" fill="url(#chalo)"/>
-<g id="c-stream"></g><rect y="600" width="1200" height="30" fill="#070707"/>
+<g id="c-stream"></g>
 <use href="#pt-logo" x="72" y="62" width="48" height="55" color="#f3f2ee"/>
 <text x="134" y="98" font-family="${MONO}" font-size="28" font-weight="600" fill="#f3f2ee">${esc(name)}</text>
 <text id="c-scope" x="1128" y="98" text-anchor="end" font-size="20" fill="#8d8b84"></text>
@@ -492,7 +498,7 @@ const cardSvg = (name: string) => `<svg id="card" xmlns="http://www.w3.org/2000/
 <text id="c-sub" x="72" y="340" font-size="24" fill="#8d8b84"></text>
 <line x1="72" y1="372" x2="1128" y2="372" stroke="#242422"/>
 ${tile(72, 414, 'Active days', 'c-active')}${tile(360, 414, 'Streak', 'c-streak')}${tile(648, 414, 'Reuse', 'c-reuse')}${tile(936, 414, 'Plan pace', 'c-plan')}
-<text x="72" y="621" font-family="${MONO}" font-size="15" fill="#5e5c55">measured in Claude Code</text></svg>`
+<text x="72" y="622" font-family="${MONO}" font-size="14" fill="#5e5c55">measured in Claude Code</text></svg>`
 
 // JSON inside a script block: "<" is escaped so no name can close the block.
 const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
