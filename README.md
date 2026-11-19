@@ -26,20 +26,26 @@ The mode, skills, hooks, task tracking and board come from [Ponytail](https://gi
 
 The Board button opens a local page (no server, no network) built from three sources: the task ledger, the event journal and the model router's log.
 
+- **Share card** carries the hero numbers plus projects, active days, streak, busiest day, reuse, router, plan pace and reviews.
 - **Overview**: four cards with sparklines (Sessions, Agent time, Cost, Tokens), a stacked chart by project, the Activity honeycomb, period 7d, 30d, 90d, All, and Share card.
 - **Projects**: every project worked on, in four categories (Large, Medium, Small, Chat) scored from turns, cost, sessions, days of work and whether it has a `PLAN.md`. Click a Large project for its own page with all the sections below filtered to it.
 - **Context and limits**: context fill curves, fill rate, life before compaction, 5-hour window peaks, burn rate, weekly forecast, blocks.
 - **Reuse**, **Model Router** (matrix from your model to the chosen one, savings estimate, last decisions), **Plans** (burn-up, velocity, projects without a plan), **Review and Audit**, **Extras** (cache, tests, cost by model, working hours, expensive sessions, push backs, subagents).
-- **Export**: every section has Export (Markdown, CSV, JSON). Export all takes any sections, with an option to hide project names. Copy summary puts a short Markdown report on the clipboard.
+- **Pages**: the sections are tabs, one page at a time. Ad hoc chats (the app's `spare-*` and `scratch-*` folders, `sandbox`, a drive root) are one group, "Chats", counted in sessions and never opened per chat.
+- **Export**: every section has Export (PDF, Markdown, CSV, JSON). PDF opens the browser's print dialog: choose "Save as PDF". Export all takes any sections, with an option to hide project names. Copy summary puts a short Markdown report on the clipboard.
 
 The event journal lives in `~/.config/ponytail/band/events-YYYY-MM.jsonl`: one line per turn, prompt, compaction, `/model` command, subagent turn and review or audit run. It never stores prompt text, only counts and flags. History starts the day the journal is first written.
 
 ### board.json
 
-Optional, next to the journal. Rename a project or force its category:
+Optional, next to the journal. Rename a project, force its category, merge two folders into one project (`aliases`) or add folders to the Chats group (`chats`):
 
 ```json
-{ "projects": { "SipAndTell": { "label": "Sip & Tell", "category": "Large" } } }
+{
+  "projects": { "SipAndTell": { "label": "Sip & Tell", "category": "Large" } },
+  "aliases": { "unified-band": "UnifiedBand" },
+  "chats": ["sandbox2"]
+}
 ```
 
 ### Checking the page

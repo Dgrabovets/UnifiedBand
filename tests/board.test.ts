@@ -19,6 +19,8 @@ test('the page has every section, the grouped buttons, the export dialog and no 
   const html = boardHtml(tasksFrom(CSV), Date.UTC(2026, 10, 19))
   for (const id of ['projects', 'context', 'reuse', 'router', 'plans', 'runs', 'extras']) expect(html.includes(`id="sec-${id}"`)).toBe(true)
   for (const id of ['copy-summary', 'export-all', 'share', 'export-dialog']) expect(html.includes(`id="${id}"`)).toBe(true)
+  for (const id of ['overview', 'projects', 'context', 'reuse', 'router', 'plans', 'runs', 'extras']) expect(html.includes(`data-page="${id}"`)).toBe(true)
+  for (const id of ['export-pdf', 'back']) expect(html.includes(`id="${id}"`)).toBe(true)
   expect(html.includes('id="rows"')).toBe(false)
   expect(html.includes('Search sessions')).toBe(false)
 })

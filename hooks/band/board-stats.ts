@@ -207,7 +207,7 @@ export function categorize(tasks, events, config) {
   return Object.keys(per).map(function (n) {
     var p = per[n], days = Object.keys(p.days).length
     var score = Math.min(3, p.turns / 150) + Math.min(3, p.cost / 40) + Math.min(2, p.sessions / 8) + Math.min(2, days / 6) + (p.plan ? 1 : 0)
-    var category = score >= 5.5 ? 'Large' : score >= 2.5 ? 'Medium' : score >= 1.2 ? 'Small' : 'Chat'
+    var category = n === 'Chats' ? 'Chat' : score >= 5.5 ? 'Large' : score >= 2.5 ? 'Medium' : score >= 1.2 ? 'Small' : 'Chat'
     var o = cfg[n] || {}
     return { name: n, label: o.label || n, category: o.category || category, score: score, sessions: p.sessions, turns: p.turns, cost: p.cost, days: days, plan: p.plan }
   }).sort(function (a, b) { return b.cost - a.cost })
