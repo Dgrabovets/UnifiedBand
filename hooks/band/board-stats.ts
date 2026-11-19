@@ -116,7 +116,7 @@ const MODEL_ORDER = ['haiku', 'sonnet', 'opus']
 const PRICE = { haiku: 0.3, sonnet: 6, opus: 12 }
 export function modelKey(s) { s = String(s || '').toLowerCase(); for (var i = 0; i < MODEL_ORDER.length; i++) if (s.indexOf(MODEL_ORDER[i]) >= 0) return MODEL_ORDER[i]; return s || 'unknown' }
 export function routerStats(rows, events) {
-  var order = MODEL_ORDER.slice(), matrix = {}, stayed = 0, up = 0, down = 0, routed = 0, corrected = 0, saved = 0, extra = 0, conf = []
+  var order = MODEL_ORDER.slice(), matrix = {}, stayed = 0, up = 0, down = 0, routed = 0, shadow = 0, corrected = 0, saved = 0, extra = 0, conf = []
   rows.forEach(function (r) { [modelKey(r.parent), modelKey(r.model)].forEach(function (m) { if (order.indexOf(m) < 0) order.push(m) }) })
   var turns = bySession(ofType(events, 'turn')), models = bySession(ofType(events, 'model'))
   rows.forEach(function (r) {
@@ -126,6 +126,7 @@ export function routerStats(rows, events) {
     if (d === 0) stayed++; else if (d > 0) up++; else down++
     if (r.conf) conf.push(r.conf)
     if (r.outcome === 'silent') return
+    if (r.outcome === 'shadow') { shadow++; return }
     routed++
     if ((models[r.session] || []).some(function (m) { return m.ts > r.ts && m.ts - r.ts < 600000 })) corrected++
     // The turn that followed the decision: its cost times the price ratio is what the hop saved or added.
@@ -136,7 +137,7 @@ export function routerStats(rows, events) {
       if (change < 0) saved += -change; else extra += change
     }
   })
-  return { order: order, matrix: matrix, total: rows.length, stayed: stayed, up: up, down: down, routed: routed, corrected: corrected, saved: saved, extra: extra, avgConf: mean(conf) }
+  return { order: order, matrix: matrix, total: rows.length, stayed: stayed, up: up, down: down, routed: routed, shadow: shadow, corrected: corrected, saved: saved, extra: extra, avgConf: mean(conf) }
 }
 
 // The router report: the three goals of the original /router-report, from the audit log and the journal.
@@ -145,7 +146,7 @@ export function routerReport(rows, workers, events) {
   var turns = bySession(ofType(events, 'turn')), models = bySession(ofType(events, 'model'))
   var kept = { n: 0, fixed: 0, ms: [] }, sent = { n: 0, fixed: 0, ms: [] }, tiers = {}, fanout = 0, catchAll = 0
   rows.forEach(function (r) {
-    var g = r.outcome === 'silent' ? kept : sent
+    var g = r.outcome === 'silent' || r.outcome === 'shadow' ? kept : sent
     g.n++
     tiers[r.tier || 'unknown'] = (tiers[r.tier || 'unknown'] || 0) + 1
     if (r.fanout) fanout++

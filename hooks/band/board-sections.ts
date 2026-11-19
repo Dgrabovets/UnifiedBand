@@ -284,12 +284,14 @@ function drawReuse() {
 }
 
 // ---- model router ---------------------------------------------------------------------------------------------------
+var HINTS = { refers_back_inline: 'points back at earlier turns', pasted_failure_inline: 'pasted failure', same_or_higher_inline: 'not cheaper than your model', followup_inline: 'short follow-up', shadow: 'shadow mode' }
 function drawRouter() {
   var rows = scopeAud()
   if (!rows.length) return emptyBody('router', 'Model Router', 'No router decisions in this period. The router logs one line per classified prompt.')
   var b = byId('b-router'); b.textContent = ''
   var ev = scopeEv(), r = routerStats(rows, ev), models = ofType(ev, 'model')
-  if (r.total >= 5 && r.routed === 0) b.append(h('div', 'alert', 'The router stayed silent for all ' + r.total + ' classified prompts: every one stayed on the model you were on.'))
+  if (r.shadow) b.append(h('div', 'alert', 'Shadow mode: the router logged ' + r.shadow + ' decisions it would have made and changed nothing.'))
+  else if (r.total >= 5 && r.routed === 0) b.append(h('div', 'alert', 'The router stayed silent for all ' + r.total + ' classified prompts: every one stayed on the model you were on.'))
   var head = h('tr'); head.append(h('th', 'r'))
   r.order.forEach(function (m) { head.append(h('th', '', cap(m))) }); head.append(h('th', '', 'Total'))
   var body = h('tbody'), TINT = { haiku: C.green, sonnet: C.blue, opus: C.purple }
@@ -309,7 +311,7 @@ function drawRouter() {
     row('stats4', [stat('Saved, est.', money(r.saved), 'from down hops'), stat('Extra, est.', '+' + money(r.extra), 'from up hops'), stat('Avg confidence', r.avgConf == null ? '–' : (Math.round(r.avgConf * 100) / 100).toFixed(2), 'classifier score'), stat('Corrected by you', String(r.corrected), 'of ' + r.routed + ' routed')]))
   var last = panel('Last decisions', 'Click a column to sort. Sort by Move to see why the router changed the model.'), t = h('table', 'dt'), th = h('tr')
   var rank = function (m) { return r.order.indexOf(modelKey(m)) }, EFFORT = ['low', 'medium', 'high', 'xhigh', 'max']
-  var fixed = function (x) { return x.outcome !== 'silent' && models.some(function (m) { return m.session === x.session && m.ts > x.ts && m.ts - x.ts < 600000 }) }
+  var fixed = function (x) { return x.outcome !== 'silent' && x.outcome !== 'shadow' && models.some(function (m) { return m.session === x.session && m.ts > x.ts && m.ts - x.ts < 600000 }) }
   var sortKey = function (x, k) { return k === 'ts' ? x.ts : k === 'parent' ? rank(x.parent) : k === 'model' ? rank(x.model) : k === 'move' ? rank(x.model) - rank(x.parent) : k === 'effort' ? EFFORT.indexOf(x.effort) : k === 'outcome' ? (fixed(x) ? 2 : x.outcome === 'silent' ? 0 : 1) : String(x.reason || '') }
   ;[['When', 'ts'], ['You were on', 'parent'], ['Sent to', 'model'], ['Move', 'move'], ['Effort', 'effort'], ['Outcome', 'outcome'], ['Why', 'reason']].forEach(function (c) {
     var on = state.rsort.k === c[1], cell = h('th', ''), btn = h('button', 'th-btn' + (on ? ' on' : ''), c[0] + (on ? (state.rsort.d > 0 ? ' ▲' : ' ▼') : '')); btn.type = 'button'
@@ -320,7 +322,7 @@ function drawRouter() {
   rows.slice().sort(function (a, c) { var x = sortKey(a, state.rsort.k), y = sortKey(c, state.rsort.k); return (x < y ? -1 : x > y ? 1 : c.ts - a.ts) * state.rsort.d }).slice(0, 10).forEach(function (x) {
     var fix = fixed(x), mv = rank(x.model) - rank(x.parent), tr = h('tr'), out = tr.appendChild(h('td'))
     tr.prepend(h('td', '', ago(x.ts)), h('td', '', cap(modelKey(x.parent))), h('td', '', cap(modelKey(x.model))), h('td', '', mv > 0 ? '↑ up' : mv < 0 ? '↓ down' : 'same'), h('td', '', x.effort || '–'))
-    out.append(tag(fix ? 'you switched back' : x.outcome === 'silent' ? 'kept' : 'routed', fix ? 'warn' : x.outcome === 'silent' ? '' : 'ok')); tr.append(h('td', 'why', x.reason || ''))
+    out.append(tag(fix ? 'you switched back' : x.outcome === 'shadow' ? 'would route' : x.outcome === 'silent' ? 'kept' : 'routed', fix ? 'warn' : x.outcome === 'silent' || x.outcome === 'shadow' ? '' : 'ok')); tr.append(h('td', 'why', (HINTS[x.hint] ? HINTS[x.hint] + ' · ' : '') + (x.reason || '')))
     tb.append(tr)
   })
   last.append(t, h('div', 'note', 'The router logs your model, the chosen model, effort, outcome and reason. A /model within ten minutes of a routed prompt counts as a correction.'))

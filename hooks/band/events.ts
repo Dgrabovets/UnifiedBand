@@ -57,7 +57,7 @@ export async function boardExtra($: EngineInterface) {
   // Outcome rows (a delegated worker, a reconciled decision) carry no decision and are not prompts.
   const audit = log
     .filter(r => r.decision)
-    .map(r => ({ ts: Date.parse(r.ts), session: r.session_id, parent: r.decision?.parent, model: r.decision?.model, effort: r.decision?.effort, tier: r.decision?.tier, conf: r.decision?.confidence, outcome: r.outcome, reason: r.decision?.reason, fanout: r.decision?.fanout === true }))
+    .map(r => ({ ts: Date.parse(r.ts), session: r.session_id, parent: r.decision?.parent, model: r.decision?.model, effort: r.decision?.effort, tier: r.decision?.tier, conf: r.decision?.confidence, outcome: r.outcome, hint: r.outcome_hint, reason: r.decision?.reason, fanout: r.decision?.fanout === true }))
   // What the delegated workers did: the launch row (duration) and the usage row of a finished worker.
   const workers = log
     .filter(r => r.kind === 'router' && (r.outcome === 'delegated' || r.outcome === 'delegated_failed' || r.outcome === 'worker_usage'))

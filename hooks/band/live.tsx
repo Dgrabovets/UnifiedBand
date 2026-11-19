@@ -31,7 +31,7 @@ async function readRouter($: EngineInterface): Promise<Live['router']> {
   const last = rows[rows.length - 1]
   return {
     total: rows.length,
-    routed: rows.filter(r => r.outcome !== 'silent').length,
+    routed: rows.filter(r => r.outcome !== 'silent' && r.outcome !== 'shadow').length,
     last: last && {
       model: String(last.decision?.model ?? ''),
       parent: String(last.decision?.parent ?? ''),

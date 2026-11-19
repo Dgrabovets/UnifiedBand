@@ -76,6 +76,7 @@ async function prompt(payload) {
     ctxTokens,
     planMode: payload.permission_mode === 'plan',
     config,
+    shadow: config.shadow === true || process.env.CC_ROUTER_SHADOW === '1',
     ctxWarnTokens: parseInt(process.env.CC_ROUTER_CTX_WARN, 10) || undefined,
     routeFloor: Number.isNaN(parseFloat(process.env.CC_ROUTER_ROUTE_FLOOR)) ? undefined : parseFloat(process.env.CC_ROUTER_ROUTE_FLOOR),
   };

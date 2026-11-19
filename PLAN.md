@@ -230,10 +230,10 @@ Port auto-model-router 0.9.2 into this mod, in Node, so it needs no separate ins
 Why: in a real log of 42 decisions, 38 fell in the catch-all "moderate scope" tier and none was delegated. The classifier barely tells tasks apart.
 
 - [x] Router report in the Board (replaces `/router-report`): cost, corrections routed against kept, time to the first turn, workers launched and their tokens, tier mix, fan-out, data-driven tips; part of the raw-data export
-- [ ] Shadow mode: the router only logs what it would do and injects nothing (`router.json` `"shadow": true`, `CC_ROUTER_SHADOW=1`)
-- [ ] Context guard: a prompt that points at earlier turns ("that function", "as before", "above") stays on the session model
-- [ ] More signals: pasted stack traces and logs, several `@file` mentions, big code blocks, task kind (debug, new, edit, explain)
-- [ ] Panel and Board show why a decision was made, including why nothing was delegated
+- [x] Shadow mode: the router only logs what it would do and injects nothing (`router.json` `"shadow": true`, `CC_ROUTER_SHADOW=1`)
+- [x] Context guard: a prompt that points at earlier turns ("that function", "as before", "above") stays on the session model
+- [x] More signals: pasted stack traces and logs, several `@file` mentions, big code blocks, task kind (debug, new, edit, explain)
+- [x] Panel and Board show why a decision was made, including why nothing was delegated
 - [ ] Labeled eval set (opt-in "save this prompt" with its correct tier) and an accuracy script
 - [ ] Calibration of the confidence thresholds from the corrections in the log, with a guard against oscillation
 - [ ] Optional Haiku judge for decisions below the confidence threshold (off by default, latency bound)

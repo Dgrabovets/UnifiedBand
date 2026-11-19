@@ -87,6 +87,19 @@ const IMPERATIVE_VERB = re(
 const HARNESS_EVENT = re(`^[${SPACE}]*(?:<system-reminder>[${SPACE}]*)?(?:<task-notification|<scheduled-task|\\[SYSTEM NOTIFICATION)`)
 // A short opening acknowledgement or back-reference continues the work in flight.
 const FOLLOWUP = re(`^[${SPACE}]*(yes|ok|okay|continue|also|now|then|that|this|it|again|go|do it|proceed|fix that|same|${ru(['да', 'ок', 'окей', 'ладно', 'продолжай*', 'продолжи', 'также', 'ещё', 'еще', 'теперь', 'потом', 'тогда', 'это', 'снова', 'давай*', 'делай*', 'дальше', 'то же', 'так же'])})${B}`, 'iu')
+// Beyond the Python original, two cases where a cheaper worker would start cold and lose what it needs:
+// the prompt points back at earlier turns, or it carries a pasted failure (a stack trace, a compiler error). Both stay inline.
+const REFERS_BACK = re(
+  `${B}(as before|like before|same as (before|earlier|above)|we (just )?(discussed|talked about|wrote|did|made)|you (just )?(wrote|did|made|said|showed)|` +
+    `(that|those|the same) (function|file|class|method|test|change|bug|error|code|part)|mentioned (above|earlier)|previous(ly)?|earlier|above|` +
+    ru(['как раньше', 'как в прошлый раз', 'как выше', 'выше', 'ранее', 'предыдущ*', 'мы обсуждали', 'обсуждали', 'только что', 'ты (только что )?(написал|сделал|показал|сказал)*', '(ту|тот|те|то|этот|эту|эти|эту) (функци*|файл*|класс*|метод*|тест*|правк*|баг*|ошибк*|код*|част*)']) +
+    `)${B}`,
+  'iu',
+)
+const PASTED_FAILURE = re(
+  `Traceback \\(most recent call last\\)|${LINE}[${SPACE.replace('\\n', '')}]+at [^\\n]+\\([^\\n]*:\\d+:\\d+\\)|Exception in thread|${LINE}panic:|error TS\\d+|error\\[E\\d+\\]|${LINE}(FAILED|FAIL|ERROR)[ :]|segmentation fault|Unhandled (Rejection|exception)`,
+  'u',
+)
 const ULTRACODE = re(`${B}ultracode${B}`, 'iu')
 
 const SPACE_RUN = re(`[${SPACE}]+`, 'u')
@@ -365,6 +378,14 @@ export function decide(input, deps) {
   if (routedRank === parentRank || (routedRank > parentRank && !explicit)) {
     return { row: row(decision, 'silent', 'same_or_higher_inline'), context: null }
   }
+
+  // Guards: a prompt that leans on earlier turns or on a pasted failure stays on the session model. An explicit #model= is never swallowed.
+  if (!explicit) {
+    if (REFERS_BACK.test(prompt)) return { row: row(decision, 'silent', 'refers_back_inline'), context: null }
+    if (PASTED_FAILURE.test(prompt)) return { row: row(decision, 'silent', 'pasted_failure_inline'), context: null }
+  }
+  // Shadow mode: the decision is logged as what the router would do, nothing is injected.
+  if (input.shadow === true) return { row: row(decision, 'shadow', 'would_route'), context: null }
 
   const budgetLine = ctxTokens >= ctxWarn && deps.budgetGate(turns)
     ? `\ncontext ${ctxK}k > ${Math.floor(ctxWarn / 1000)}k: delegate routable work; consider /wrap-session + a fresh session.`

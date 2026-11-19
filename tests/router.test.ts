@@ -32,7 +32,12 @@ test('the port decides like the Python original on every prompt of the different
   // A Cyrillic prompt is decided differently on purpose (the port reads Russian, the original did not): tests/router-russian.test.ts.
   const different = cases.filter(c => !CYRILLIC.test(c.prompt)).flatMap(c => {
     const got = route(c)
-    const same = JSON.stringify({ row: strip(got.row), context: got.context }) === JSON.stringify(c.expected)
+    // A guard added beyond the original keeps an injected decision inline: the decision itself must still be the original's.
+    const guard = got.row?.outcome_hint === 'refers_back_inline' || got.row?.outcome_hint === 'pasted_failure_inline'
+    const orig = strip(c.expected.row)
+    const same = guard
+      ? c.expected.row?.outcome === 'injected' && JSON.stringify(strip(got.row)?.decision) === JSON.stringify(orig?.decision) && got.context === null
+      : JSON.stringify({ row: strip(got.row), context: got.context }) === JSON.stringify(c.expected)
     return same ? [] : [`${c.name} (${c.parent}, plan ${c.plan}): ${JSON.stringify({ row: strip(got.row), context: got.context })} instead of ${JSON.stringify(c.expected)}`]
   })
   expect(different.join('\n')).toBe('')
