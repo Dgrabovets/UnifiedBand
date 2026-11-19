@@ -4,7 +4,6 @@
 import { STATS_SRC } from './board-stats'
 import { MOTION_CSS, MOTION_JS } from './board-motion'
 import { SECTIONS_CSS, SECTIONS_JS, SECTION_NAV, sectionHtml } from './board-sections'
-import { LOGO_PATHS, LOGO_VIEWBOX } from './logo'
 
 export const duration = (minutes: number) =>
   minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`
@@ -194,6 +193,7 @@ main{padding:16px}.search{width:160px}.big{font-size:32px}}
 const APP = `(function () {
   var D = JSON.parse(document.getElementById('board-data').textContent)
   var tasks = D.tasks, now = D.now, DAY = 86400000, NS = 'http://www.w3.org/2000/svg'
+  var BRAND = D.brand || 'Unified Band', SLUG = BRAND.toLowerCase().split(' ').join('-')
   // Ad hoc chats (the app's spare and scratch folders, a session's sandbox, a drive root) are one group, with no detail per chat.
   var CHAT_RE = /^(spare|scratch)-|^sandbox$|^[A-Za-z]:$/
   function groupName(n) { var al = (D.config && D.config.aliases) || {}, more = (D.config && D.config.chats) || []; if (al[n]) n = al[n]; return CHAT_RE.test(n) || more.indexOf(n) >= 0 ? 'Chats' : n }
@@ -434,11 +434,11 @@ const APP = `(function () {
   function download(blob, name) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click() }
   // The saved card carries its own copy of the logo, so it stands alone.
   function cardText() { var c = byId('card').cloneNode(true); c.querySelector('defs').append(byId('pt-logo').cloneNode(true)); return new XMLSerializer().serializeToString(c) }
-  function saveSvg() { download(new Blob([cardText()], { type: 'image/svg+xml' }), 'ponytail-card.svg') }
+  function saveSvg() { download(new Blob([cardText()], { type: 'image/svg+xml' }), SLUG + '-card.svg') }
   function savePng() {
     var img = new Image()
     img.onload = function () {
-      try { var c = document.createElement('canvas'); c.width = 1200; c.height = 630; c.getContext('2d').drawImage(img, 0, 0); c.toBlob(function (b) { b ? download(b, 'ponytail-card.png') : saveSvg() }) } catch (e) { saveSvg() }
+      try { var c = document.createElement('canvas'); c.width = 1200; c.height = 630; c.getContext('2d').drawImage(img, 0, 0); c.toBlob(function (b) { b ? download(b, SLUG + '-card.png') : saveSvg() }) } catch (e) { saveSvg() }
     }
     img.onerror = saveSvg
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(cardText())
@@ -485,19 +485,19 @@ const cardStat = (y: number, label: string, id: string) =>
   `<text x="760" y="${y}" font-size="20" fill="#8d8b84">${label}</text><text id="${id}" x="1128" y="${y}" text-anchor="end" font-family="${MONO}" font-size="30" fill="#f3f2ee"></text>`
 const tile = (x: number, y: number, label: string, id: string) =>
   `<text x="${x}" y="${y}" font-size="17" fill="#8d8b84">${label}</text><text id="${id}" x="${x}" y="${y + 36}" font-family="${MONO}" font-size="27" fill="#f3f2ee"></text>`
-const CARD = `<svg id="card" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" font-family="${SANS}">
+const cardSvg = (name: string) => `<svg id="card" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" font-family="${SANS}">
 <defs>${PALETTE.map((c, i) => `<linearGradient id="cf${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".95"/><stop offset="1" stop-color="${c}" stop-opacity=".55"/></linearGradient>`).join('')}<filter id="cglow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="12"/></filter><radialGradient id="chalo" cx=".62" cy=".8" r=".6"><stop offset="0" stop-color="#5fe08a" stop-opacity=".16"/><stop offset="1" stop-color="#5fe08a" stop-opacity="0"/></radialGradient></defs>
 <rect width="1200" height="630" fill="#070707"/><rect width="1200" height="630" fill="url(#chalo)"/>
 <g id="c-stream"></g><rect y="600" width="1200" height="30" fill="#070707"/>
-<use href="#pt-logo" x="72" y="62" width="48" height="55"/>
-<text x="134" y="98" font-family="${MONO}" font-size="28" font-weight="600" fill="#f3f2ee">ponytail</text>
+<use href="#pt-logo" x="72" y="62" width="48" height="55" color="#f3f2ee"/>
+<text x="134" y="98" font-family="${MONO}" font-size="28" font-weight="600" fill="#f3f2ee">${esc(name)}</text>
 <text id="c-scope" x="1128" y="98" text-anchor="end" font-size="20" fill="#8d8b84"></text>
 <text x="72" y="196" font-size="22" fill="#8d8b84">Agent time</text><text id="c-time" x="66" y="292" font-family="${MONO}" font-size="104" font-weight="600" letter-spacing="-5" fill="#f3f2ee"></text>
 ${cardStat(172, 'Cost', 'c-cost')}${cardStat(228, 'Tokens', 'c-tokens')}${cardStat(284, 'Sessions', 'c-sessions')}
 <line x1="72" y1="326" x2="1128" y2="326" stroke="#242422"/>
 ${tile(72, 362, 'Projects', 'c-projects')}${tile(360, 362, 'Active days', 'c-active')}${tile(648, 362, 'Streak', 'c-streak')}${tile(936, 362, 'Busiest day', 'c-busiest')}
 ${tile(72, 436, 'Reuse', 'c-reuse')}${tile(360, 436, 'Router', 'c-router')}${tile(648, 436, 'Plan pace', 'c-plan')}${tile(936, 436, 'Reviews', 'c-runs')}
-<text x="72" y="621" font-family="${MONO}" font-size="15" fill="#5e5c55">measured in Claude Code</text><text x="1128" y="621" text-anchor="end" font-family="${MONO}" font-size="15" fill="#5fe08a">ponytail.dev</text></svg>`
+<text x="72" y="621" font-family="${MONO}" font-size="15" fill="#5e5c55">measured in Claude Code</text></svg>`
 
 // JSON inside a script block: "<" is escaped so no name can close the block.
 const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
@@ -505,19 +505,29 @@ const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c').
 // Dark, light, system: CSS shows the icon of the current choice.
 const THEME_BUTTON = '<button type="button" class="theme" id="theme" data-choice="dark" aria-label="Theme: dark" title="Theme: dark"><svg class="i-system" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg><svg class="i-light" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="i-dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>'
 
-// The tab icon: the same face, centred on a square canvas.
-const FAVICON = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-78 0 1241 1241"><g fill="#1d1c1a">${LOGO_PATHS}</g></svg>`)}`
+// The logo: a hexagon (the honeycomb of the Activity card) holding three bars, the band's rows in three colours.
+// It takes the page's text colour, so it follows the theme; the share card sets its own colour on the <use>.
+const LOGO_VIEWBOX = '0 0 28 32'
+const LOGO_PATHS =
+  '<path d="M14 1.6 25.4 8.2v15.6L14 30.4 2.6 23.8V8.2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>' +
+  '<rect x="7" y="9.6" width="14" height="3" rx="1.5" fill="#5fe08a"/><rect x="7" y="14.6" width="10" height="3" rx="1.5" fill="#7c8cff"/><rect x="7" y="19.6" width="12" height="3" rx="1.5" fill="#ffd166"/>'
+
+// The tab icon: the same mark, with a grey outline that shows on a light or a dark tab bar.
+const FAVICON = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${LOGO_VIEWBOX.split(' ').slice(2).join(' ')}">${LOGO_PATHS.split('currentColor').join('#8d8b84')}</svg>`)}`
 
 // What the journal and the router log add to the ledger: events, router decisions and the owner's board.json.
 export type BoardExtra = { events: unknown[]; audit: unknown[]; config: unknown }
 
 export function boardHtml(tasks: Task[], now: number, extra: BoardExtra = { events: [], audit: [], config: {} }): string {
+  // The dashboard's name: board.json can set "title".
+  const wanted = (extra.config as { title?: unknown } | null)?.title
+  const name = typeof wanted === 'string' && wanted.trim() !== '' ? wanted.trim() : 'Unified Band'
   const seg = (attr: string, items: [string, string][], on: string) =>
     items.map(([value, label]) => `<button type="button" data-${attr}="${value}"${value === on ? ' class="on"' : ''}>${label}</button>`).join('')
-  return `<!doctype html><html lang="en" data-theme="dark" data-motion="rich"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ponytail board</title><link rel="icon" href="${FAVICON}"><style>${CSS}${SECTIONS_CSS}${MOTION_CSS}</style></head>
-<body><svg class="sprite" aria-hidden="true" focusable="false"><symbol id="pt-logo" viewBox="${LOGO_VIEWBOX}"><g fill="#1d1c1a">${LOGO_PATHS}</g></symbol></svg>
+  return `<!doctype html><html lang="en" data-theme="dark" data-motion="rich"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(name)}</title><link rel="icon" href="${FAVICON}"><style>${CSS}${SECTIONS_CSS}${MOTION_CSS}</style></head>
+<body><svg class="sprite" aria-hidden="true" focusable="false"><symbol id="pt-logo" viewBox="${LOGO_VIEWBOX}">${LOGO_PATHS}</symbol></svg>
 <div class="app">
-<aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>ponytail</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
+<aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>${esc(name)}</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
 <main>
 <div class="top"><div><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
 <div class="actions"><div class="picker"><button type="button" class="btn" id="picker" aria-haspopup="menu">All projects ▾</button></div><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="grp" role="group" aria-label="Export"><button type="button" id="copy-summary">Copy summary</button><button type="button" id="export-all">Export all</button><button type="button" id="export-raw">Raw data</button><button type="button" id="share">Share card</button></div></div></div>
@@ -532,10 +542,10 @@ ${sectionHtml('projects')}
 <div><div class="hero-label"><i style="color:#ffd166">◆</i>Streak</div><div class="hero-value num" id="h-streak"></div><div class="hero-sub" id="h-streak-sub"></div></div></div><div id="facts"></div></div></div></section>
 </div>
 ${['context', 'reuse', 'router', 'plans', 'runs', 'extras'].map(id => `<div class="page" data-page="${id}">${sectionHtml(id)}</div>`).join('\n')}
-<footer>Measured by ponytail's band in Claude Code. Cost is the API-priced cost Claude Code reports (/cost), not a bill. Nothing here is estimated.</footer>
+<footer>Measured by the ${esc(name)} band in Claude Code. Cost is the API-priced cost Claude Code reports (/cost), not a bill. Nothing here is estimated.</footer>
 </main></div>
 <dialog id="export-dialog"><div class="dlg-head"><b>Export all</b><div class="dlg-actions"><button type="button" class="btn" id="export-raw-dlg">Raw data</button><button type="button" class="btn" id="export-pdf">PDF</button><button type="button" class="btn" id="export-md">Markdown</button><button type="button" class="btn" id="export-json">JSON</button><button type="button" class="btn" id="export-copy">Copy</button><button type="button" class="btn" id="export-close">Close</button></div></div><div class="dlg-body"><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label><label class="li"><input type="checkbox" id="with-titles"><span>Include session titles (the first words of each prompt)</span></label></div></dialog>
-<dialog id="share-dialog"><div class="dlg-head"><b>Share card</b><div class="dlg-actions"><button type="button" class="btn" id="save-png">Save PNG</button><button type="button" class="btn" id="save-svg">Save SVG</button><button type="button" class="btn" id="share-close">Close</button></div></div><div class="dlg-body">${CARD}</div></dialog>
-<script type="application/json" id="board-data">${json({ now, tasks, ...extra })}</script>
+<dialog id="share-dialog"><div class="dlg-head"><b>Share card</b><div class="dlg-actions"><button type="button" class="btn" id="save-png">Save PNG</button><button type="button" class="btn" id="save-svg">Save SVG</button><button type="button" class="btn" id="share-close">Close</button></div></div><div class="dlg-body">${cardSvg(name)}</div></dialog>
+<script type="application/json" id="board-data">${json({ now, tasks, ...extra, brand: name })}</script>
 <script>${APP}</script></body></html>`
 }

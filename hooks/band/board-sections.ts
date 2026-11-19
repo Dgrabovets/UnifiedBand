@@ -5,7 +5,7 @@
 // Nav order and titles; also the list of sections Export all offers.
 export const SECTIONS: [string, string, string][] = [
   ['overview', 'Overview', ''],
-  ['projects', 'Projects', 'Worked on in the chosen period, by size'],
+  ['projects', 'Projects', ''],
   ['context', 'Context and limits', 'How fast the window fills and the limits run out'],
   ['reuse', 'Reuse', 'How often Ponytail reused code instead of writing it'],
   ['router', 'Model Router', 'Where your prompts were sent, and whether it helped'],
@@ -17,7 +17,7 @@ export const SECTIONS: [string, string, string][] = [
 // One card per section: a head with the title and an Export menu, and a body the script fills.
 export const sectionHtml = (id: string) => {
   const [, title, sub] = SECTIONS.find(x => x[0] === id) ?? [id, id, '']
-  return `<section class="card sec" id="sec-${id}"><div class="sec-head"><div><h3>${title}</h3><div class="sub">${sub}</div></div><div class="exp"><button type="button" class="btn sm" data-export="${id}" aria-haspopup="menu">Export ▾</button></div></div><div class="sec-body" id="b-${id}"></div></section>`
+  return `<section class="card sec" id="sec-${id}"><div class="sec-head"><div><h3>${title}</h3>${sub ? `<div class="sub">${sub}</div>` : ''}</div><div class="exp"><button type="button" class="btn sm" data-export="${id}" aria-haspopup="menu">Export ▾</button></div></div><div class="sec-body" id="b-${id}"></div></section>`
 }
 
 export const SECTION_NAV = SECTIONS.filter(([id]) => id !== 'projects').map(([id, title]) => `<button type="button" class="nav-item" data-tab="${id}"><span class="name">${title}</span></button>`).join('')
@@ -77,11 +77,11 @@ body{background:#fff}footer{display:none}
 .pcat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
 .tile{border:1px solid var(--line);border-radius:14px;padding:10px 12px}.tile b{display:block;font:500 22px ${'"JetBrains Mono",ui-monospace,monospace'}}.tile span{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
 .ptable-note{margin-bottom:2px}
-.prow{display:grid;grid-template-columns:24px minmax(0,1.4fr) 84px 76px 84px minmax(0,1.3fr) 72px;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line);transition:opacity .2s}
+.prow{display:grid;grid-template-columns:24px minmax(0,1.4fr) 84px 76px 84px minmax(0,1.3fr);gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line);transition:opacity .2s}
 .prow.head{border-top:0;color:var(--faint);font-size:12px;padding:2px 0 6px}.prow .r{text-align:right}.prow.dim{opacity:.4}
 .psw{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--c);background:var(--c);padding:0;cursor:pointer}.psw[aria-pressed=false]{background:transparent}
 .plink{border:0;background:transparent;color:var(--text);font:inherit;text-align:left;padding:0;cursor:pointer}.plink:hover{text-decoration:underline}.plink.dimmed{color:var(--muted);text-align:right}
-.fc{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer}.fc.on{background:var(--text);color:var(--bg);border-color:transparent}
+.fc{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer}.fc.on{background:var(--text);color:var(--bg);border-color:transparent}.fl-acts{margin-left:auto;display:flex;gap:6px}.fc.ghost{border-color:transparent}.fc.ghost:hover{background:var(--track);color:var(--text)}
 @media (max-width:860px){.prow{grid-template-columns:24px minmax(0,1fr) 76px 80px 64px}.prow>:nth-child(3),.prow>:nth-child(6){display:none}}
 .proj{display:grid;grid-template-columns:150px minmax(0,1fr) 70px 16px;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line);cursor:pointer;background:transparent;border-left:0;border-right:0;border-bottom:0;width:100%;color:var(--text);font:inherit;text-align:left}.proj:hover{background:var(--track)}
 .hm{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:3px;margin-top:6px}.hm i{aspect-ratio:1;border-radius:4px;display:block;background:var(--empty)}
@@ -197,23 +197,34 @@ function drawProjects() {
   var isChats = function (p) { return p.name === 'Chats' }
   var count = function (c) { return all.filter(function (p) { return c === 'Chat' ? isChats(p) : p.category === c && !isChats(p) }).length }
   var chats = all.filter(isChats)[0]
-  b.append(h('div', 'stat-s', plural(all.filter(function (p) { return !isChats(p) }).length, 'project') + ' worked on. A swatch shows or hides a project in the chart; Large projects open their own page.'))
-  var fl = h('div', 'fl')
+  var fl = h('div', 'fl'), rowsFor = []
   ;[['', 'All ' + all.length], ['Large', 'Large ' + count('Large')], ['Medium', 'Medium ' + count('Medium')], ['Small', 'Small ' + count('Small')], ['Chat', 'Chats ' + (chats ? plural(chats.sessions, 'session') : 0)]].forEach(function (f) {
     var c = h('button', 'fc' + (state.cat === f[0] ? ' on' : ''), f[1]); c.type = 'button'; c.setAttribute('aria-pressed', String(state.cat === f[0]))
     c.addEventListener('click', function () { state.cat = f[0]; drawProjects() }); fl.append(c)
   })
-  b.append(fl, row('prow head', [h('span'), h('span', '', 'Project'), h('span', '', 'Category'), h('span', 'r', 'Sessions'), h('span', 'r', 'Cost'), h('span', '', 'Share'), h('span')]))
+  // Show or hide every project on screen in the chart at once.
+  var acts = h('span', 'fl-acts')
+  ;[['Select all', false], ['Select none', true]].forEach(function (x) {
+    var c = h('button', 'fc ghost', x[0]); c.type = 'button'
+    c.addEventListener('click', function () {
+      rowsFor.forEach(function (r) { state.hidden[r.p.name] = x[1]; r.sw.setAttribute('aria-pressed', String(!x[1])); r.tr.classList.toggle('dim', x[1]) })
+      chart(); card()
+    })
+    acts.append(c)
+  })
+  fl.append(acts)
+  b.append(fl, row('prow head', [h('span'), h('span', '', 'Project'), h('span', '', 'Category'), h('span', 'r', 'Sessions'), h('span', 'r', 'Cost'), h('span', '', 'Share')]))
   var spend = total(all, function (p) { return p.cost }) || 1
   all.filter(function (p) { return !state.cat || (state.cat === 'Chat' ? isChats(p) : p.category === state.cat && !isChats(p)) }).forEach(function (p) {
     var large = p.category === 'Large' && !isChats(p), tr = h('div', 'prow' + (state.hidden[p.name] ? ' dim' : ''))
     var sw = h('button', 'psw'); sw.type = 'button'; sw.style.setProperty('--c', colorOf(p.name)); sw.setAttribute('aria-pressed', String(!state.hidden[p.name])); sw.setAttribute('aria-label', 'Show ' + labelOf(p.name) + ' in the chart')
     sw.addEventListener('click', function () { state.hidden[p.name] = !state.hidden[p.name]; sw.setAttribute('aria-pressed', String(!state.hidden[p.name])); tr.classList.toggle('dim', !!state.hidden[p.name]); chart(); card() })
     function open() { state.project = p.name; state.hidden = {}; render(); showPage('overview') }
-    var name, openCell
-    if (large) { name = h('button', 'plink', labelOf(p.name)); name.type = 'button'; name.addEventListener('click', open); openCell = h('button', 'plink dimmed', 'Open ›'); openCell.type = 'button'; openCell.addEventListener('click', open) } else { name = h('span', '', isChats(p) ? 'Chats' : labelOf(p.name)); openCell = h('span') }
+    var name
+    if (large) { name = h('button', 'plink', labelOf(p.name)); name.type = 'button'; name.addEventListener('click', open) } else { name = h('span', '', isChats(p) ? 'Chats' : labelOf(p.name)) }
     var bar = h('div', 'hbar'), i = h('i'); i.style.width = Math.max(2, p.cost / spend * 100) + '%'; i.style.background = colorOf(p.name); bar.append(i)
-    tr.append(sw, name, tag(isChats(p) ? 'Chat' : p.category), h('span', 'r num', String(p.sessions)), h('span', 'r num', money(p.cost)), bar, openCell)
+    tr.append(sw, name, tag(isChats(p) ? 'Chat' : p.category), h('span', 'r num', String(p.sessions)), h('span', 'r num', money(p.cost)), bar)
+    rowsFor.push({ p: p, tr: tr, sw: sw })
     b.append(tr)
   })
   setExport('projects', 'Projects', ['Project', 'Category', 'Sessions', 'Turns', 'Cost', 'Days', 'Plan'], all.map(function (p) { return [labelOf(p.name), p.category, String(p.sessions), String(p.turns), money(p.cost), String(p.days), p.plan ? 'yes' : 'no'] }))
@@ -397,7 +408,7 @@ function rawData() {
   var titles = byId('with-titles').checked, summary = {}
   Object.keys(EXPORTS).forEach(function (id) { summary[id] = EXPORTS[id] })
   var out = {
-    app: 'ponytail board', generated: new Date(now).toISOString(), scope: stamp(), titlesIncluded: titles,
+    app: BRAND, generated: new Date(now).toISOString(), scope: stamp(), titlesIncluded: titles,
     note: 'Project names are folder names; spare-, scratch-, sandbox and drive roots are grouped as Chats. Times are local to the machine that built the board.',
     schema: {
       tasks: 'one row per session: key, started (local), project, cost in USD (API price, not a bill), turns, agentMinutes, tokens, reuse percent or null, tests, level, model',
@@ -415,7 +426,7 @@ function rawData() {
   }
   return mask(JSON.stringify(out, null, 1), byId('hide-names').checked)
 }
-function saveRaw() { saveText(rawData(), 'ponytail-data-' + dkey(now) + '.json', 'application/json') }
+function saveRaw() { saveText(rawData(), SLUG + '-data-' + dkey(now) + '.json', 'application/json') }
 
 // One page at a time: the nav and the remembered choice follow it.
 function showPage(id) {
@@ -464,7 +475,7 @@ function toCsv(e) {
   return [e.headers].concat(e.rows).map(function (r) { return r.map(q).join(',') }).join(NL)
 }
 function stamp() { return dkey(now) + ' · ' + (state.project ? labelOf(state.project) : 'All projects') + ' · ' + (state.period ? 'last ' + state.period + ' days' : 'all time') }
-function allMd(ids, hide) { return mask(['# Ponytail board', '', stamp(), ''].concat(ids.map(function (id) { return toMd(EXPORTS[id]) + NL })).join(NL), hide) }
+function allMd(ids, hide) { return mask(['# ' + BRAND, '', stamp(), ''].concat(ids.map(function (id) { return toMd(EXPORTS[id]) + NL })).join(NL), hide) }
 function saveText(text, name, type) { download(new Blob([text], { type: type }), name) }
 function saveSection(id, fmt) {
   var e = EXPORTS[id] || { title: id, headers: [], rows: [] }
@@ -504,8 +515,8 @@ function wireExport() {
   byId('export-all').addEventListener('click', function () { dlg.showModal() })
   byId('export-close').addEventListener('click', function () { dlg.close() })
   byId('export-pdf').addEventListener('click', function () { dlg.close(); printIds(chosen()) })
-  byId('export-md').addEventListener('click', function () { saveText(allMd(chosen(), byId('hide-names').checked), 'ponytail-board.md', 'text/markdown') })
-  byId('export-json').addEventListener('click', function () { saveText(mask(JSON.stringify({ scope: stamp(), sections: chosen().map(function (id) { return EXPORTS[id] }) }, null, 2), byId('hide-names').checked), 'ponytail-board.json', 'application/json') })
+  byId('export-md').addEventListener('click', function () { saveText(allMd(chosen(), byId('hide-names').checked), SLUG + '-board.md', 'text/markdown') })
+  byId('export-json').addEventListener('click', function () { saveText(mask(JSON.stringify({ scope: stamp(), sections: chosen().map(function (id) { return EXPORTS[id] }) }, null, 2), byId('hide-names').checked), SLUG + '-board.json', 'application/json') })
   byId('export-copy').addEventListener('click', function (e) { copyText(allMd(chosen(), byId('hide-names').checked), e.target, 'Copied') })
 }
 `
