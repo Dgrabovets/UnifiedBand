@@ -205,6 +205,12 @@ Always on, one rich level; the system "reduce motion" setting turns everything o
 - [x] A click anywhere on a project row shows or hides it
 - [x] The Share card strip is two panels, cost and tokens per day, one rounded bar per day, each with its maximum and the date ends
 - [x] Export dialog is split: sections and options on the left, format cards and one Download button on the right
+### 15. Showcase (M)
+
+- [x] The smoke script has a DEMO mode with invented data (neutral project names, a few chats)
+- [x] Screenshots of every Board section, made with headless Chrome from `demo/capture.mjs`
+- [x] A Remotion video and a GIF of the Board, and a social preview picture
+- [x] README rewritten around the pictures, with a quick start, data locations and how to regenerate the media
 
 ## Decisions
 

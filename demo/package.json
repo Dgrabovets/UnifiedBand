@@ -1,0 +1,25 @@
+{
+  "name": "unified-band-demo",
+  "private": true,
+  "description": "Screenshots and the demo video of Unified Band. Not part of the plugin.",
+  "type": "module",
+  "scripts": {
+    "board": "cd .. && STREAK=1 DEMO=1 node scripts/smoke-board.mjs demo/board-demo.html",
+    "shots": "node capture.mjs",
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Demo ../docs/demo.mp4 --crf=28",
+    "gif": "remotion render src/index.ts Demo ../docs/demo.gif --codec=gif --every-nth-frame=4 --scale=0.4",
+    "social": "remotion still src/index.ts Social ../docs/images/social-preview.png"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.290",
+    "puppeteer-core": "24.2.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.290"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.18",
+    "typescript": "5.7.3"
+  }
+}
