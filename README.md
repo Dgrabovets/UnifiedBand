@@ -18,12 +18,24 @@
 
 <p align="center"><sub>A 30 second tour, drawn from invented demo data. <a href="docs/demo.mp4">Watch it as a sharper video</a>.</sub></p>
 
-## Why
+## One plugin instead of many
 
-Two add-ons had grown over the same prompt, each with its own buttons and numbers, and neither could tell you how a session went. Unified Band replaces both with one mod:
+A usual Claude Code setup grows into a pile: a status line here, a usage tracker there, a Ponytail plugin for lean code, a model router, a separate dashboard, a notifier. Each has its own install, its own buttons, its own numbers, and they fight over the same space above the prompt.
 
-- **The band** is a single, tidy strip above the prompt: Ponytail level, cost, tokens, tests, limits, the model router and how far along your plan is.
-- **The Board** is a local dashboard built from what the band records: per-project statistics, context and limits, the router's decisions, plans, reviews and more. No server, no network, no account.
+Unified Band puts them in one place, behind one interface:
+
+| You used to install | In Unified Band |
+| --- | --- |
+| A status line for cost, tokens and context | **The band** above the prompt: cost, tokens, tests, context, limits and plan progress in one strip |
+| A usage and limit tracker | **Limit cards and warnings**, and the **Context and limits** section of the Board |
+| [Ponytail](https://github.com/DietrichGebert/PonyTail) for lean code | **Built in**: levels, skills, task tracking and the ledger |
+| A dashboard of past sessions | **The Board**: projects, cost by model, reuse, plans, reviews, extras |
+| A model router's report | **The Model Router section** (the router itself is being folded in, so nothing separate is needed) |
+
+One install, one set of buttons, one place to look. And it keeps growing: the band takes new cards, the Board takes new sections, and the same recorded data feeds both, so a new feature costs no extra setup.
+
+- **The band** is a single, tidy strip above the prompt: Ponytail level, cost, tokens, tests, limits and how far along your plan is.
+- **The Board** is a local dashboard built from what the band records. No server, no network, no account.
 
 ## Quick start
 
