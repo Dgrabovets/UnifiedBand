@@ -60,20 +60,22 @@ Optional, next to the journal. Rename a project, force its category, merge two f
 ## Install
 
 ```
-/plugin marketplace add OWNER/REPO
-/plugin install unified-band@unified-band
+/plugin marketplace add Dgrabovets/UnifiedBand
+/plugin install unified-band@dgrabovets-plugins
 ```
 
-Replace `OWNER/REPO` with this repository's GitHub path.
+Built and tested on Claude Code 2.1.302. The band above the prompt needs a build with mod support; without it only the Ponytail hooks and skills load.
 
 ## Known limits
 
 - The panel covers Ponytail's own row only after it has drawn once. If you see two panels after a reload, the cover hook did not run on your build.
 - Buttons are text only: the `Button` element has no icon prop.
-- Board opens `~/.config/ponytail/band/board.html`, which Ponytail builds after each turn. It does nothing before the first finished turn.
+- The Board button builds and opens `~/.config/ponytail/band/board.html` from what has been recorded so far; before the first finished turn it shows an empty page.
 - Type-checking with `tsc` was not run.
 
 ## Test
+
+CI runs the same checks on every pull request and every push to `master` (`.github/workflows/ci.yml`): validate, the tests, and the Board smoke test.
 
 ```
 claude plugin validate .

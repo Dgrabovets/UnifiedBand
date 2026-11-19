@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 24: the smoke script needs 22.15 or later (type stripping and module hooks).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # The mod's tests import `claude-code/testing`, which only the Claude Code CLI provides.
+      # Pinned to the version the mod was built and tested on. No sign-in is needed for validate and test.
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code@2.1.302
+
+      - name: Validate the plugin
+        run: claude plugin validate .
+
+      - name: Run the tests
+        run: claude plugin test .
+
+      # Builds the Board page from synthetic data and runs its script against a stand-in DOM.
+      - name: Smoke-test the Board page
+        run: node scripts/smoke-board.mjs "$RUNNER_TEMP/board.html"

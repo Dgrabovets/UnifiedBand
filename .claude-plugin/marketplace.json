@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "unified-band",
+  "name": "dgrabovets-plugins",
   "description": "Ponytail mode and skills plus one band above the Claude Code prompt.",
   "owner": {
     "name": "dgrabovets"
