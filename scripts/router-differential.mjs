@@ -188,9 +188,16 @@ if (!hooksMode) {
       .replace(/"project_config": "[^"]*"/, '"project_config": "<config>"')
       .replace(/"confidence": 1\.0/, '"confidence": 1')
       .replace('auto-model-router:router-', 'unified-band:router-')
+  // A Cyrillic prompt is decided differently on purpose: the port reads Russian, the original did not (tests/router-russian.test.ts).
+  const cyrillic = /[Ѐ-ӿ]/
   let same = 0
+  let byDesign = 0
   const bad = []
   for (const c of cases) {
+    if (cyrillic.test(c.prompt)) {
+      byDesign++
+      continue
+    }
     const py = runCase(c, 'python')
     const js = runCase(c, 'node')
     const a = { lines: py.lines.map(l => fix(l, py)), out: fix(py.stdout, py) }
@@ -198,7 +205,7 @@ if (!hooksMode) {
     if (JSON.stringify(a) === JSON.stringify(b)) same++
     else bad.push({ name: c.name, parent: c.parent, a, b })
   }
-  console.log(`${same} of ${cases.length} prompt cases identical`)
+  console.log(`${same} of ${cases.length - byDesign} prompt cases identical (${byDesign} Cyrillic cases left out: the port reads Russian on purpose)`)
   for (const d of bad) console.log(JSON.stringify(d, null, 1))
 
   const [pyLines, jsLines] = [runAgentScenario('python'), runAgentScenario('node')]

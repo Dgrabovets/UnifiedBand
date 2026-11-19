@@ -27,24 +27,37 @@ const B = `(?:(?<=[${WORD}])(?![${WORD}])|(?<![${WORD}])(?=[${WORD}]))`
 // Python's ^ with re.M: the start, or right after a \n (JS also breaks on \r and U+2028).
 const LINE = '(?<![^\\n])'
 const re = (source, flags = 'u') => new RegExp(source, flags)
+// Russian is matched by stems (a verb has many endings), so a stem takes any letters after it.
+// This is the one place the port goes beyond the Python original, which knew English words only:
+// a Russian prompt gets the decision its English translation would get (tests/router-russian.test.ts).
+const RW = `[${WORD}]*`
+const ru = stems => stems.map(stem => stem.replaceAll('*', RW)).join('|')
 
 const LOOKUP_VERBS = re(
   `^(what is|where is|is there|does|list|show|what|where|when|who|which|find|` +
     `count|how many|status|read|print|display|tell me|summari[sz]e|name |give me|` +
-    `do you have|check|grep|search|ls|cat|open|view)${B}`,
+    `do you have|check|grep|search|ls|cat|open|view|` +
+    ru(['что такое', 'что', 'где', 'есть ли', 'покажи', 'выведи', 'сколько', 'кто', 'когда', 'какой', 'какая', 'какое', 'какие', 'найди', 'поищи', 'перечисли', 'прочитай', 'прочти', 'скажи', 'открой', 'проверь']) +
+    `)${B}`,
   'iu',
 )
 const COMPLEX_VERBS = re(
-  `${B}(refactor|redesign|migrate|integrate|implement|optimi[sz]e|rewrite|restructure|port|extract|consolidate)${B}`,
+  `${B}(refactor|redesign|migrate|integrate|implement|optimi[sz]e|rewrite|restructure|port|extract|consolidate|` +
+    ru(['рефактор*', 'перепиш*', 'переработ*', 'перестро*', 'перепроектир*', 'реализ*', 'мигрир*', 'перенес*', 'перенос*', 'оптимиз*', 'интегрир*', 'консолидир*', 'вынес*', 'вынос*', 'извлеч*', 'переосмысл*']) +
+    `)${B}`,
   'iu',
 )
 // Breadth signals keep a short "complex" verb on Opus instead of Sonnet.
 const BREADTH_SIGNAL = re(
-  `${B}(architect[${WORD}]*|whole|entire|subsystem|infrastructure|platform|multi[- ]?tenant|end[- ]to[- ]end|system[- ]wide|codebase)${B}`,
+  `${B}(architect[${WORD}]*|whole|entire|subsystem|infrastructure|platform|multi[- ]?tenant|end[- ]to[- ]end|system[- ]wide|codebase|` +
+    ru(['архитектур*', 'весь', 'вся', 'всю', 'всей', 'целиком', 'полностью', 'подсистем*', 'инфраструктур*', 'платформ*', 'мультитенант*', 'сквозн*', 'кодов* баз*', 'кодбейс*', 'по всему', 'во всем', 'во всём']) +
+    `)${B}`,
   'iu',
 )
 const DEEP_VERBS = re(
-  `${B}(plan|architect|design|investigate|brainstorm|analy[sz]e|audit|profile|diagnose|root[- ]cause)${B}`,
+  `${B}(plan|architect|design|investigate|brainstorm|analy[sz]e|audit|profile|diagnose|root[- ]cause|` +
+    ru(['спланир*', 'планир*', 'спроектир*', 'проектир*', 'исследуй*', 'исследов*', 'обдума*', 'продума*', 'проанализир*', 'анализир*', 'аудит*', 'профилир*', 'диагностир*', 'первопричин*', 'корневая причина', 'брейншторм*']) +
+    `)${B}`,
   'iu',
 )
 const OVERRIDE_PATTERN = re(`#model=(${Object.keys(MODEL_TIERS).join('|')})${B}`, 'iu')
@@ -53,23 +66,27 @@ const FILE_PATH = re(
   'gu',
 )
 const EFFORT_HEAVY_VERBS = re(
-  `${B}(refactor|migrate|investigate|audit|architect|integrate|restructure|optimi[sz]e|across|consolidate|review|rewrite|redesign|implement|port|extract|build)${B}`,
+  `${B}(refactor|migrate|investigate|audit|architect|integrate|restructure|optimi[sz]e|across|consolidate|review|rewrite|redesign|implement|port|extract|build|` +
+    ru(['рефактор*', 'мигрир*', 'исследов*', 'исследуй*', 'аудит*', 'интегрир*', 'перестро*', 'оптимиз*', 'по всем', 'по всему', 'во всех', 'консолидир*', 'ревью', 'проревью*', 'перепиш*', 'переработ*', 'перепроектир*', 'реализ*', 'перенес*', 'вынес*', 'постро*', 'разработ*']) +
+    `)${B}`,
   'iu',
 )
-const TEST_VERIFY = re(`${B}(test|tests|verify|verification|spec|specs)${B}`, 'iu')
+const TEST_VERIFY = re(`${B}(test|tests|verify|verification|spec|specs|${ru(['тест*', 'проверк*', 'проверь*', 'верифиц*', 'спек*'])})${B}`, 'iu')
 const NUMBERED_ITEM = re(`${LINE}[${SPACE}]*\\p{Nd}+[.)][${SPACE}]+[^${SPACE}]`, 'gu')
 const BULLET_ITEM = re(`${LINE}[${SPACE}]*[-*•][${SPACE}]+[^${SPACE}]`, 'gu')
-const FOR_EACH = re(`${B}for (each|all of|every|both)${B}`, 'iu')
+const FOR_EACH = re(`${B}(for (each|all of|every|both)|для (каждого|каждой|каждое|каждых|обоих|обеих))${B}`, 'iu')
 const IMPERATIVE_VERB = re(
   `${B}(add|update|fix|create|write|refactor|remove|delete|rename|bump|implement|build|run|test|` +
-    `document|review|check|move|generate|wire|replace|migrate|extract|install|configure|set up)${B}`,
+    `document|review|check|move|generate|wire|replace|migrate|extract|install|configure|set up|` +
+    ru(['добав*', 'обнов*', 'исправ*', 'созда*', 'напиш*', 'удал*', 'переимен*', 'реализ*', 'собер*', 'запуст*', 'протестир*', 'задокументир*', 'проверь*', 'перемест*', 'сгенерир*', 'замен*', 'мигрир*', 'вынес*', 'установ*', 'настро*', 'рефактор*']) +
+    `)${B}`,
   'giu',
 )
 // Harness events reach UserPromptSubmit like typed prompts but are not: a task
 // notification, a scheduled-task run, a system notice, maybe wrapped in <system-reminder>.
 const HARNESS_EVENT = re(`^[${SPACE}]*(?:<system-reminder>[${SPACE}]*)?(?:<task-notification|<scheduled-task|\\[SYSTEM NOTIFICATION)`)
 // A short opening acknowledgement or back-reference continues the work in flight.
-const FOLLOWUP = re(`^[${SPACE}]*(yes|ok|okay|continue|also|now|then|that|this|it|again|go|do it|proceed|fix that|same)${B}`, 'iu')
+const FOLLOWUP = re(`^[${SPACE}]*(yes|ok|okay|continue|also|now|then|that|this|it|again|go|do it|proceed|fix that|same|${ru(['да', 'ок', 'окей', 'ладно', 'продолжай*', 'продолжи', 'также', 'ещё', 'еще', 'теперь', 'потом', 'тогда', 'это', 'снова', 'давай*', 'делай*', 'дальше', 'то же', 'так же'])})${B}`, 'iu')
 const ULTRACODE = re(`${B}ultracode${B}`, 'iu')
 
 const SPACE_RUN = re(`[${SPACE}]+`, 'u')

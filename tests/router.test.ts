@@ -6,6 +6,7 @@ import { computeWaves, needsWorktree, parseFiles, partitionBatches, planExecutio
 import { cases } from './router-fixture'
 import type { Case } from './router-fixture'
 
+const CYRILLIC = /[Ѐ-ӿ]/
 const deps = { now: () => 'T', sha: () => 'S', id: () => 'x', budgetGate: () => true }
 
 // What router-hook.js does for one prompt, with the disk replaced by the case: the same steps, in the same order.
@@ -28,7 +29,8 @@ const strip = (row: Record<string, unknown> | null) => {
 
 test('the port decides like the Python original on every prompt of the differential corpus', () => {
   expect(cases.length > 60).toBe(true)
-  const different = cases.flatMap(c => {
+  // A Cyrillic prompt is decided differently on purpose (the port reads Russian, the original did not): tests/router-russian.test.ts.
+  const different = cases.filter(c => !CYRILLIC.test(c.prompt)).flatMap(c => {
     const got = route(c)
     const same = JSON.stringify({ row: strip(got.row), context: got.context }) === JSON.stringify(c.expected)
     return same ? [] : [`${c.name} (${c.parent}, plan ${c.plan}): ${JSON.stringify({ row: strip(got.row), context: got.context })} instead of ${JSON.stringify(c.expected)}`]
