@@ -1,0 +1,9 @@
+version: 2
+updates:
+  # Keeps the actions used by CI current. The Claude Code version in ci.yml is pinned by hand.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
