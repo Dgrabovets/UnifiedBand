@@ -27,6 +27,14 @@ export async function logEvent($: EngineInterface, ev: Ev) {
   if (old !== undefined) await $.fs.write(file, `${old}${JSON.stringify(ev)}\n`)
 }
 
+// The router's audit log: CC_ROUTER_CACHE_DIR when set (the router honours it), else <claude config>/cache/router.
+export async function routerLogPath($: EngineInterface) {
+  const set = await $.env.get('CC_ROUTER_CACHE_DIR')
+  if (set) return `${set}/audit.jsonl`
+  const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
+  return `${(await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${home}/.claude`}/cache/router/audit.jsonl`
+}
+
 // What the Board adds to the task ledger: the journal, the router's decisions and the owner's board.json.
 // shortcut: reads whole files; $.fs.read refuses one over 4 MiB, so an oversize router log is left out.
 export async function boardExtra($: EngineInterface) {
@@ -39,9 +47,7 @@ export async function boardExtra($: EngineInterface) {
       } catch {}
     }
   }
-  const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
-  const claude = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${home}/.claude`
-  const audit = ((await $.fs.read(`${claude}/cache/router/audit.jsonl`).catch(() => '')) as string)
+  const audit = ((await $.fs.read(await routerLogPath($)).catch(() => '')) as string)
     .split('\n')
     .flatMap(line => {
       try {

@@ -17,7 +17,8 @@ const os = require('os');
 const path = require('path');
 const { getClaudeDir } = require('./ponytail-config');
 
-const AUDIT_ROTATE_BYTES = intEnv('CC_ROUTER_AUDIT_MAX_BYTES', 5 * 1024 * 1024);
+// 3 MiB, not the original's 5: the band and the Board read this log with an engine call that refuses a file over 4 MiB.
+const AUDIT_ROTATE_BYTES = intEnv('CC_ROUTER_AUDIT_MAX_BYTES', 3 * 1024 * 1024);
 const AUDIT_RETAIN_DAYS = intEnv('CC_ROUTER_AUDIT_RETAIN_DAYS', 30);
 const TRANSCRIPT_TAIL_BYTES = 64 * 1024;
 // Second, wider read for when the tail holds no assistant record.

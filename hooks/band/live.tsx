@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, TurnCompleteInput } from 'claude-code'
 
 import type { Band, Live } from '../../types'
-import { NEGATIVE, RESULT, baseName, logEvent } from './events'
+import { NEGATIVE, RESULT, baseName, logEvent, routerLogPath } from './events'
 
 type Options = { readonly [field: string]: unknown }
 
@@ -10,12 +10,10 @@ export const EMPTY_LIVE: Live = { branch: '', root: '', limits: [], tasks: null,
 
 export const live = atom({ plugin: 'unified-band', key: 'live' } as const, EMPTY_LIVE)
 
-// What auto-model-router decided in this session, read from the audit log it writes. Absent log: the router has never run.
-// shortcut: $.fs.read refuses a log over 4 MiB (the router rotates at 5 MiB), then the card shows "No Log".
+// What the model router decided in this session, read from the audit log it writes. Absent log: the router has never run.
+// shortcut: $.fs.read refuses a log over 4 MiB (the built-in router rotates at 3 MiB; the original plugin at 5), then the card shows "No Log".
 async function readRouter($: EngineInterface): Promise<Live['router']> {
-  const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
-  const dir = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${home}/.claude`
-  const text = await $.fs.read(`${dir}/cache/router/audit.jsonl`).catch(() => undefined)
+  const text = await $.fs.read(await routerLogPath($)).catch(() => undefined)
   if (text === undefined) return undefined
   const id = await $.session.id()
   const rows = text

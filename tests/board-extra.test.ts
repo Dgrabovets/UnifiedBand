@@ -64,3 +64,19 @@ test('a broken board.json costs only the config, not the journal', async () => {
   expect(r.events.length).toBe(1)
   expect(r.config).toEqual({})
 })
+
+test('the router log is read from CC_ROUTER_CACHE_DIR when it is set', async () => {
+  const row = JSON.stringify({ ts: '2026-11-19T10:00:00+00:00', session_id: 's', decision: { parent: 'sonnet', model: 'sonnet' }, outcome: 'silent' }) + '\n'
+  const env: Record<string, string> = { XDG_CONFIG_HOME: '/cfg', HOME: '/home', CC_ROUTER_CACHE_DIR: '/elsewhere' }
+  const $ = {
+    env: { get: async (name: string) => env[name] },
+    fs: {
+      list: async () => [],
+      read: async (path: string) => {
+        if (path === '/elsewhere/audit.jsonl') return row
+        throw new Error('missing')
+      },
+    },
+  } as never
+  expect((await boardExtra($)).audit.length).toBe(1)
+})
