@@ -2,6 +2,7 @@
 // No server and no network: inline CSS, inline SVG and a few lines of script.
 
 import { STATS_SRC } from './board-stats'
+import { MOTION_CSS, MOTION_JS } from './board-motion'
 import { SECTIONS_CSS, SECTIONS_JS, SECTION_NAV, sectionHtml } from './board-sections'
 import { LOGO_PATHS, LOGO_VIEWBOX } from './logo'
 
@@ -292,6 +293,7 @@ const APP = `(function () {
       if (p > 0) { var pct = Math.round((v - p) / p * 100); value.append(h('span', 'delta ' + (pct >= 0 ? 'up' : 'down'), (pct >= 0 ? '↑' : '↓') + Math.abs(pct) + '%')) }
       var note = !state.period ? 'all time' : p > 0 ? 'vs previous ' + n + ' days' : 'last ' + n + ' days'
       card.append(h('div', 'kpi-label', M.label), value, h('div', 'kpi-note', note), sparkline(perDay(list, keys, M.pick), i, k))
+      animateNumber(value.firstChild, v, M.fmt)
       wrap.append(card)
     })
   }
@@ -306,6 +308,7 @@ const APP = `(function () {
     var cur = inDays(list, keys).filter(function (t) { return !state.hidden[t.project] })
     byId('chart-sub').textContent = M.label + (state.period ? ', last ' + n + ' days' : ', all time')
     byId('chart-total').textContent = M.fmt(total(cur, M.pick))
+    animateNumber(byId('chart-total').firstChild, total(cur, M.pick), M.fmt)
     legend(shown)
     var x = function (i) { return n > 1 ? i * W / (n - 1) : W / 2 }
     svg('line', { x1: 0, x2: W, y1: base + 22, y2: base + 22, 'class': 'base' }, box)
@@ -380,6 +383,7 @@ const APP = `(function () {
     cells.forEach(function (c) { if (c.a > .6) svg('path', { d: hex(c.cx, c.cy, r), fill: heatColor(c.a), filter: 'url(#hglow)', 'class': 'glow-cell' }, s) })
     cells.forEach(function (c) {
       var p = svg('path', c.v ? { d: hex(c.cx, c.cy, r - 2), fill: heatColor(c.a) } : { d: hex(c.cx, c.cy, r - 2), 'class': 'cell-empty' }, s)
+      p.style.setProperty('--d', Math.round(c.cx * 0.55) + 'ms')
       svg('title', {}, p).textContent = shortDate(c.k) + ': ' + (c.v ? time(c.v) : 'no session')
     })
     ;['Mon', 'Wed', 'Fri'].forEach(function (d, i) { svg('text', { x: 0, y: top + (1 + 2 * i) * r * 1.5 + 4, 'class': 'day' }, s).textContent = d })
@@ -435,8 +439,9 @@ const APP = `(function () {
 
   ${STATS_SRC}
   ${SECTIONS_JS}
+  ${MOTION_JS}
 
-  function render() { header(); kpis(); chart(); heat(); card(); renderSections() }
+  function render() { header(); kpis(); chart(); heat(); card(); renderSections(); stagger() }
 
   function download(blob, name) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click() }
   // The saved card carries its own copy of the logo, so it stands alone.
@@ -479,6 +484,7 @@ const APP = `(function () {
     try { localStorage.setItem('ponytail-board-theme', next) } catch (e) {}
   })
 
+  initMotion()
   render()
   wireExport()
 })()`
@@ -520,10 +526,10 @@ export type BoardExtra = { events: unknown[]; audit: unknown[]; config: unknown 
 export function boardHtml(tasks: Task[], now: number, extra: BoardExtra = { events: [], audit: [], config: {} }): string {
   const seg = (attr: string, items: [string, string][], on: string) =>
     items.map(([value, label]) => `<button type="button" data-${attr}="${value}"${value === on ? ' class="on"' : ''}>${label}</button>`).join('')
-  return `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ponytail board</title><link rel="icon" href="${FAVICON}"><style>${CSS}${SECTIONS_CSS}</style></head>
+  return `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ponytail board</title><link rel="icon" href="${FAVICON}"><style>${CSS}${SECTIONS_CSS}${MOTION_CSS}</style></head>
 <body><svg class="sprite" aria-hidden="true" focusable="false"><symbol id="pt-logo" viewBox="${LOGO_VIEWBOX}"><g fill="#1d1c1a">${LOGO_PATHS}</g></symbol></svg>
 <div class="app">
-<aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>ponytail</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
+<aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>ponytail</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span><button type="button" class="motion" id="motion">Motion: Rich</button>${THEME_BUTTON}</div></aside>
 <main>
 <div class="top"><div><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
 <div class="actions"><div class="picker"><button type="button" class="btn" id="picker" aria-haspopup="menu">All projects ▾</button></div><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="grp" role="group" aria-label="Export"><button type="button" id="copy-summary">Copy summary</button><button type="button" id="export-all">Export all</button><button type="button" id="export-raw">Raw data</button><button type="button" id="share">Share card</button></div></div></div>
