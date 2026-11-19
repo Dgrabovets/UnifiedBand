@@ -3,7 +3,7 @@
   "name": "unified-band",
   "description": "Ponytail mode and skills plus one band above the Claude Code prompt.",
   "owner": {
-    "name": "OWNER-NAME"
+    "name": "dgrabovets"
   },
   "plugins": [
     {

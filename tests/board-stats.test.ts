@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { categorize, contextStats, extraStats, fiveStats, planStats, reuseStats, routerStats, runStats, weeklyStats } from '../hooks/band/board-stats'
+import { categorize, maskTree, contextStats, extraStats, fiveStats, planStats, reuseStats, routerStats, runStats, weeklyStats } from '../hooks/band/board-stats'
 
 const S = { contextStats, fiveStats, weeklyStats, reuseStats, routerStats, planStats, runStats, categorize, extraStats }
 
@@ -91,4 +91,11 @@ test('categories: a long project is Large, a tiny one is Small, board.json can o
 test('the Chats group is always the Chat category, however big', () => {
   const tasks = Array.from({ length: 40 }, (_, i) => ({ project: 'Chats', started: `2026-11-${String((i % 28) + 1).padStart(2, '0')} 10:00`, turns: 200, cost: 50 }))
   expect(categorize(tasks, [], {})[0].category).toBe('Chat')
+})
+
+test('maskTree swaps project names in values only, so a project called app keeps every field and heading', () => {
+  const map = { app: 'Project 1', Reuse: 'Project 2' }
+  const doc = { app: 'Board', rows: [['app', 'Large'], ['Reuse', 'x']], title: 'Reuse', note: 'app one' }
+  expect(maskTree(doc, map, false)).toEqual({ app: 'Board', rows: [['Project 1', 'Large'], ['Project 2', 'x']], title: 'Project 2', note: 'app one' })
+  expect(maskTree({ projects: { app: { label: 'A' } } }, map, true)).toEqual({ projects: { 'Project 1': { label: 'A' } } })
 })

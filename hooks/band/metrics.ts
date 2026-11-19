@@ -158,14 +158,22 @@ export const testsLabel = (t: Band['tests']) =>
 
 // Claude Code writes the session's sidebar name into its transcript on every rename.
 export const TITLE_RECORD = '"type":"custom-title"'
-// grep -o pattern for the model of every reply in a transcript.
-export const MODEL_PATTERN = '"model":"claude-[^"]*"'
 
-// The model that wrote most replies, from grep -o lines like "model":"claude-opus-5-5". Empty when none.
+// The model that wrote most replies, from the transcript text (`"model":"claude-opus-5-5"`). Empty when none.
 export function mainModel(grepOut: string): string {
   const count = new Map<string, number>()
   for (const m of grepOut.matchAll(/"model":"(claude-[^"]+)"/g)) count.set(m[1], (count.get(m[1]) ?? 0) + 1)
   return [...count].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
+}
+
+// The share of the last request's input that came from the cache, read from the usage record at the end of the transcript.
+// Used when the turn event carries no usage. undefined when the tail holds no usage record.
+export function lastCache(tail: string): number | undefined {
+  const all = [...tail.matchAll(/"input_tokens":(\d+),"cache_creation_input_tokens":(\d+),"cache_read_input_tokens":(\d+)/g)]
+  const last = all[all.length - 1]
+  if (!last) return undefined
+  const total = Number(last[1]) + Number(last[2]) + Number(last[3])
+  return total > 0 ? Math.round((Number(last[3]) / total) * 100) : undefined
 }
 
 // The newest sidebar name in transcript lines, or undefined when the session has none.

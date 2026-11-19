@@ -21,7 +21,7 @@ export const MOTION_CSS = `
 .page.on{animation:bd-fade .24s var(--ease) backwards}
 .page.on>*{animation:bd-rise .55s var(--ease) backwards;animation-delay:calc(var(--i,0) * 70ms)}
 .kpi{animation:bd-rise .6s var(--ease) backwards;animation-delay:calc(var(--i,0) * 80ms)}
-.g2>*,.g3>*,.pcat>.tile,.heroes>*,.stats2>*,.stats3>*,.stats4>*{animation:bd-rise .5s var(--ease) backwards;animation-delay:calc(var(--i,0) * 60ms)}
+.g2>*,.g3>*,.heroes>*,.stats2>*,.stats3>*,.stats4>*{animation:bd-rise .5s var(--ease) backwards;animation-delay:calc(var(--i,0) * 60ms)}
 .cols i{transform-origin:bottom;animation:bd-grow-y .6s var(--ease) backwards;animation-delay:calc(var(--i,0) * 30ms)}
 .hbar i{transform-origin:left;animation:bd-grow-x .7s var(--ease) backwards}
 .lines,.spark,#stream{animation:bd-reveal 1s var(--ease) backwards;animation-delay:.12s}
@@ -29,7 +29,7 @@ export const MOTION_CSS = `
 #heat .cell-empty{animation:bd-fade .5s var(--ease) backwards;animation-delay:var(--d,0ms)}
 #heat .glow-cell{animation:bd-glow 3.4s ease-in-out 1s infinite}
 .mx td{animation:bd-pop .45s var(--ease) backwards;animation-delay:calc(var(--i,0) * 40ms)}
-.proj,.li,.prow{animation:bd-rise .45s var(--ease) backwards;animation-delay:calc(var(--i,0) * 30ms)}
+.li,.prow{animation:bd-rise .45s var(--ease) backwards;animation-delay:calc(var(--i,0) * 30ms)}
 #sections .nav-item{animation:bd-rise .5s var(--ease) backwards;animation-delay:calc(var(--i,0) * 45ms)}
 .nav-item{position:relative}
 .nav-item.on::before{content:"";position:absolute;left:0;top:26%;bottom:26%;width:3px;border-radius:2px;background:var(--text);animation:bd-grow-y .3s var(--ease) backwards}
@@ -44,16 +44,15 @@ dialog[open]::backdrop{animation:bd-fade .2s backwards}
 #card.assemble #c-stream{animation:bd-reveal 1.1s var(--ease) .4s backwards}
 
 /* Answers to the pointer: no transforms on text, so text stays sharp */
-.btn,.grp button,.seg button,.nav-item,.chip{transition:background .18s var(--ease),color .18s var(--ease),border-color .18s var(--ease)}
+.btn,.grp button,.seg button,.nav-item{transition:background .18s var(--ease),color .18s var(--ease),border-color .18s var(--ease)}
 .btn:active,.grp button:active,.seg button:active{transform:scale(.97)}
 .theme svg{transition:transform .3s var(--ease)}.theme:active svg{transform:rotate(60deg)}
-.kpi,.tile,.panel,.chart-card,.heat{position:relative;transition:border-color .25s var(--ease)}
-.kpi:hover,.tile:hover,.panel:hover{border-color:var(--line2)}
-.kpi::before,.tile::before,.panel::before,.chart-card::before,.heat::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;opacity:0;transition:opacity .3s var(--ease);background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.075),transparent 65%)}
-.kpi:hover::before,.tile:hover::before,.panel:hover::before,.chart-card:hover::before,.heat:hover::before{opacity:1}
-:root[data-theme=light] .kpi::before,:root[data-theme=light] .tile::before,:root[data-theme=light] .panel::before,:root[data-theme=light] .chart-card::before,:root[data-theme=light] .heat::before{background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(0,0,0,.05),transparent 65%)}
-.tile>*,.panel>*,.chart-card>*,.heat>*{position:relative;z-index:1}
-.proj{transition:background .18s var(--ease)}
+.kpi,.panel,.chart-card,.heat{position:relative;transition:border-color .25s var(--ease)}
+.kpi:hover,.panel:hover{border-color:var(--line2)}
+.kpi::before,.panel::before,.chart-card::before,.heat::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;opacity:0;transition:opacity .3s var(--ease);background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.075),transparent 65%)}
+.kpi:hover::before,.panel:hover::before,.chart-card:hover::before,.heat:hover::before{opacity:1}
+:root[data-theme=light] .kpi::before,:root[data-theme=light] :root[data-theme=light] .panel::before,:root[data-theme=light] .chart-card::before,:root[data-theme=light] .heat::before{background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(0,0,0,.05),transparent 65%)}
+.panel>*,.chart-card>*,.heat>*{position:relative;z-index:1}
 
 /* A limit close to its end: a red ring that breathes */
 .panel.hot::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;box-shadow:0 0 0 1px rgba(224,96,90,.6),0 0 22px rgba(224,96,90,.35);animation:bd-hot 2.2s ease-in-out infinite}
@@ -150,7 +149,7 @@ function assembleCard() {
 }
 function pointerGlow() {
   document.addEventListener('pointermove', function (e) {
-    var t = e.target && e.target.closest ? e.target.closest('.kpi, .panel, .tile, .chart-card, .heat') : null
+    var t = e.target && e.target.closest ? e.target.closest('.kpi, .panel, .chart-card, .heat') : null
     if (!t) return
     var r = t.getBoundingClientRect()
     t.style.setProperty('--mx', Math.round(e.clientX - r.left) + 'px'); t.style.setProperty('--my', Math.round(e.clientY - r.top) + 'px')
@@ -159,7 +158,7 @@ function pointerGlow() {
 
 // The index of each child among its siblings, for the staggered entrances.
 function stagger() {
-  ;['.page.on', '.kpis', '.pcat', '.g2', '.g3', '.stats2', '.stats3', '.stats4', '.heroes', '.cols', '.hm', '#sections', '#b-projects', '.panel'].forEach(function (sel) {
+  ;['.page.on', '.kpis', '.g2', '.g3', '.stats2', '.stats3', '.stats4', '.heroes', '.cols', '.hm', '#sections', '#b-projects', '.panel'].forEach(function (sel) {
     document.querySelectorAll(sel).forEach(function (c) { Array.from(c.children || []).forEach(function (k, i) { if (k.style) k.style.setProperty('--i', i) }) })
   })
   Array.from(document.querySelectorAll('.mx td')).forEach(function (td, i) { td.style.setProperty('--i', i) })

@@ -256,7 +256,8 @@ function run() {
   }
   let added = 0;
   for (const [project, rows] of byProject) {
-    const file = path.join(dir, `${project.replace(/[^\w.-]/g, '_')}.csv`);
+    // Its own file: a running session never writes it, so the two cannot overwrite each other.
+    const file = path.join(dir, `${project.replace(/[^\w.-]/g, '_')}-import.csv`);
     let existing = '';
     try { existing = fs.readFileSync(file, 'utf8'); } catch (e) {}
     const merged = mergeRows(existing, rows, have);

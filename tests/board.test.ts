@@ -52,3 +52,7 @@ test('board.json can rename the dashboard, and the name is escaped', () => {
   expect(html.includes('<title>My &lt;Board&gt;</title>')).toBe(true)
   expect(html.includes('<title>Unified Band</title>')).toBe(false)
 })
+
+test('the projects table tells you when a category is empty', () => {
+  expect(boardHtml([], 1, { events: [], audit: [], config: {} }).includes('No projects in this category.')).toBe(true)
+})

@@ -241,6 +241,20 @@ export function extraStats(tasks, events, now) {
   }
 }
 
+// Hides project names in an export: a string equal to a name is swapped for its alias. Only values change, so a project
+// called "app" or "tests" cannot rename a field or a heading. keys: also swap object keys (the config's project map).
+export function maskTree(node, map, keys) {
+  var has = function (k) { return Object.prototype.hasOwnProperty.call(map, k) }
+  if (typeof node === 'string') return has(node) ? map[node] : node
+  if (Array.isArray(node)) return node.map(function (x) { return maskTree(x, map, keys) })
+  if (node && typeof node === 'object') {
+    var out = {}
+    Object.keys(node).forEach(function (k) { out[keys && has(k) ? map[k] : k] = maskTree(node[k], map, keys) })
+    return out
+  }
+  return node
+}
+
 // What the page runs: the constants as text, then every function above as it was written.
 export const STATS_SRC = [
   'var DAYMS = ' + DAYMS + ', HOURMS = ' + HOURMS + ', MODEL_ORDER = ' + JSON.stringify(MODEL_ORDER) + ', PRICE = ' + JSON.stringify(PRICE),
@@ -264,4 +278,5 @@ export const STATS_SRC = [
   String(projectEntry),
   String(categorize),
   String(extraStats),
+  String(maskTree),
 ].join('\n')

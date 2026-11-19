@@ -24,7 +24,7 @@ The mode, skills, hooks, task tracking and board come from [Ponytail](https://gi
 
 ## Board
 
-The Board button opens a local page (no server, no network) built from three sources: the task ledger, the event journal and the model router's log.
+The Board button opens a local page (no server, no network) built from three sources: the task ledger, the event journal and the model router's log. The ledger is one CSV per project and session (`<project>-<session>.csv`, and `<project>-import.csv` from `/ponytail band import`); the Board merges them.
 
 - **Share card** carries the hero numbers plus projects, active days, streak, busiest day, reuse, router, plan pace and reviews.
 - **Overview**: four cards with sparklines (Sessions, Agent time, Cost, Tokens), a stacked chart by project, the Activity honeycomb, period 7d, 30d, 90d, All, and Share card.
@@ -37,7 +37,7 @@ The Board button opens a local page (no server, no network) built from three sou
 - **Pages**: the sections are tabs, one page at a time. Ad hoc chats (the app's `spare-*` and `scratch-*` folders, `sandbox`, a drive root) are one group, "Chats", counted in sessions and never opened per chat.
 - **Export**: every section has Export (PDF, Markdown, CSV, JSON). PDF opens the browser's print dialog: choose "Save as PDF". Export all takes any sections, with an option to hide project names. Copy summary puts a short Markdown report on the clipboard.
 
-The event journal lives in `~/.config/ponytail/band/events-YYYY-MM.jsonl`: one line per turn, prompt, compaction, `/model` command, subagent turn and review or audit run. It never stores prompt text, only counts and flags. History starts the day the journal is first written.
+The event journal lives in `~/.config/ponytail/band/events-YYYY-MM-DD-<session>.jsonl` (one file per session and day): one line per turn, prompt, compaction, `/model` command, subagent turn and review or audit run. It never stores prompt text, only counts and flags. History starts the day the journal is first written.
 
 The dashboard is called Unified Band, with a hexagon-and-bars mark of its own. Set `"title"` in `board.json` to call it something else; the name shows in the sidebar, the tab, the share card and the exports.
 

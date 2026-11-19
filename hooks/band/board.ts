@@ -17,7 +17,7 @@ export const elapsed = (ms: number) => {
 }
 
 export const fmtTokens = (n: number) =>
-  n < 1000 ? `${n}` : n < 1e6 ? `${+(n / 1e3).toFixed(1)}k` : `${+(n / 1e6).toFixed(1)}M`
+  n < 1000 ? `${n}` : n < 1e6 ? `${+(n / 1e3).toFixed(1)}k` : n < 1e9 ? `${+(n / 1e6).toFixed(1)}M` : `${+(n / 1e9).toFixed(1)}B`
 
 export type Task = {
   key: string
@@ -124,7 +124,7 @@ const CSS = `:root{color-scheme:dark;--bg:#060606;--panel:#0c0c0c;--card:linear-
 main{padding:26px 32px 56px;min-width:0;max-width:1400px;width:100%;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:22px;flex-wrap:wrap}
 .crumb{color:var(--faint);font-size:13px}.crumb b{color:var(--muted);font-weight:500}
-h1{margin:2px 0 0;font-size:26px;font-weight:650;letter-spacing:-.02em}.top p{margin:2px 0 0;color:var(--muted)}
+h1{margin:2px 0 0;font-size:26px;font-weight:650;letter-spacing:-.02em}.top p{margin:8px 0 0;color:var(--text);opacity:.78;font-size:14px;font-weight:500}
 .actions{display:flex;gap:10px;align-items:center}
 .seg{display:inline-flex;background:var(--track);border:1px solid var(--line);border-radius:12px;padding:3px;flex:none}
 .seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;padding:6px 12px;border-radius:9px;cursor:pointer}
@@ -151,15 +151,8 @@ h1{margin:2px 0 0;font-size:26px;font-weight:650;letter-spacing:-.02em}.top p{ma
 .hover-line{stroke:var(--text);stroke-opacity:.5}
 .tip{position:absolute;pointer-events:none;background:var(--tip);color:var(--tipText);border:1px solid var(--line2);border-radius:12px;padding:7px 11px;font-size:12px;transform:translate(-50%,calc(-100% - 12px));white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .tip-date{opacity:.65}.tip-value{font:600 13px ${MONO_CSS}}
-.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:var(--track);border:1px solid var(--line);color:var(--text);font:inherit;font-size:13px;cursor:pointer}
-.chip .x{color:var(--faint)}.chip[aria-pressed=false]{opacity:.45}
 .grid2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;align-items:start}
-.list{padding:20px 0 6px}
-.list-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 22px 14px}
 h3{margin:0;font-size:15px;font-weight:600}h3 .n{color:var(--faint);font-weight:400;margin-left:4px}
-.search{display:flex;align-items:center;gap:8px;background:var(--track);border:1px solid var(--line);border-radius:10px;padding:6px 10px;width:220px;color:var(--faint)}
-.search input{border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:13px;width:100%}
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font-weight:400;color:var(--faint);font-size:12px;padding:0 10px 10px;white-space:nowrap}
@@ -185,8 +178,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 @media (max-width:1100px){.grid2{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;border-right:0;border-bottom:1px solid var(--line)}
 .side-label,.foot-text,.foot-sep{display:none}.side-foot{margin:0 0 0 auto;padding:0;border:0}.brand{padding:2px 10px}#sections{display:flex;gap:4px;flex-wrap:wrap}.nav-item{width:auto}
-main{padding:16px}.search{width:160px}.big{font-size:32px}}
-@media (max-width:520px){.kpis{grid-template-columns:minmax(0,1fr)}.top .actions{width:100%;justify-content:space-between}.list-head{flex-wrap:wrap}.search{width:100%}}`
+main{padding:16px}.big{font-size:32px}}
+@media (max-width:520px){.kpis{grid-template-columns:minmax(0,1fr)}.top .actions{width:100%;justify-content:space-between}}`
 
 // The page draws itself from the JSON block: project picker, period, charts and table need no reload.
 // Names only ever reach the page as text (textContent), never as HTML.
@@ -199,7 +192,7 @@ const APP = `(function () {
   function groupName(n) { var al = (D.config && D.config.aliases) || {}, more = (D.config && D.config.chats) || []; if (al[n]) n = al[n]; return CHAT_RE.test(n) || more.indexOf(n) >= 0 ? 'Chats' : n }
   tasks.forEach(function (x) { x.project = groupName(x.project) })
   ;(D.events || []).forEach(function (e) { e.project = groupName(e.project) })
-  var state = { project: '', cat: '', metric: 'time', q: '', period: 30, hidden: {} }
+  var state = { project: '', cat: '', rsort: { k: 'ts', d: -1 }, metric: 'time', q: '', period: 30, hidden: {} }
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   var PALETTE = ${JSON.stringify(PALETTE)}
   // Each KPI its own colour pair, apart from the project colours: the line runs from one to the other.
@@ -210,11 +203,10 @@ const APP = `(function () {
   function two(n) { return (n < 10 ? '0' : '') + n }
   function dayKey(ms) { var d = new Date(ms); return d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()) }
   // claude-opus-5-5 reads as Opus 5.5; a trailing date in the id is dropped.
-  function modelName(m) { var p = m.replace(/^claude-/, '').split('-'); return p[0] ? p[0][0].toUpperCase() + p[0].slice(1) + (p.length > 1 ? '\\u00a0' + p.slice(1).filter(function (x) { return x.length < 3 }).join('.') : '') : '' }
   function shortDate(key) { return MONTHS[+key.slice(5, 7) - 1] + ' ' + +key.slice(8, 10) }
   function dur(min) { return min < 60 ? min + 'm' : Math.floor(min / 60) + 'h ' + (min % 60) + 'm' }
   function time(ms) { var s = Math.round(ms / 1000); return s < 60 ? s + 's' : s < 3600 ? Math.floor(s / 60) + 'm ' + (s % 60) + 's' : dur(Math.round(s / 60)) }
-  function tok(n) { return n < 1000 ? String(Math.round(n)) : n < 1e6 ? +(n / 1e3).toFixed(1) + 'k' : +(n / 1e6).toFixed(1) + 'M' }
+  function tok(n) { return n < 1000 ? String(Math.round(n)) : n < 1e6 ? +(n / 1e3).toFixed(1) + 'k' : n < 1e9 ? +(n / 1e6).toFixed(1) + 'M' : +(n / 1e9).toFixed(1) + 'B' }
   function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
   function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's') }
   function add(a, b) { return a + b }
