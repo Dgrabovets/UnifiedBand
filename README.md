@@ -61,7 +61,7 @@ Optional, next to the journal. Rename a project, force its category, merge two f
 
 ```
 /plugin marketplace add Dgrabovets/UnifiedBand
-/plugin install unified-band@unified-band
+/plugin install unified-band@dgrabovets-plugins
 ```
 
 Built and tested on Claude Code 2.1.302. The band above the prompt needs a build with mod support; without it only the Ponytail hooks and skills load.
