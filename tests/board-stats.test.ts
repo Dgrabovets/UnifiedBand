@@ -87,3 +87,8 @@ test('categories: a long project is Large, a short chat is Chat, board.json can 
   expect([quick.category, quick.label]).toEqual(['Small', 'Quick question'])
   expect(S.categorize([{ project: 'Chat1', started: '2026-11-02 09:00', turns: 3, cost: 0.2 }], [], {})[0].category).toBe('Chat')
 })
+
+test('the Chats group is always the Chat category, however big', () => {
+  const tasks = Array.from({ length: 40 }, (_, i) => ({ project: 'Chats', started: `2026-11-${String((i % 28) + 1).padStart(2, '0')} 10:00`, turns: 200, cost: 50 }))
+  expect(categorize(tasks, [], {})[0].category).toBe('Chat')
+})

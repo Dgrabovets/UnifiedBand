@@ -193,6 +193,11 @@ main{padding:16px}.search{width:160px}.big{font-size:32px}}
 const APP = `(function () {
   var D = JSON.parse(document.getElementById('board-data').textContent)
   var tasks = D.tasks, now = D.now, DAY = 86400000, NS = 'http://www.w3.org/2000/svg'
+  // Ad hoc chats (the app's spare and scratch folders, a session's sandbox, a drive root) are one group, with no detail per chat.
+  var CHAT_RE = /^(spare|scratch)-|^sandbox$|^[A-Za-z]:$/
+  function groupName(n) { var al = (D.config && D.config.aliases) || {}, more = (D.config && D.config.chats) || []; if (al[n]) n = al[n]; return CHAT_RE.test(n) || more.indexOf(n) >= 0 ? 'Chats' : n }
+  tasks.forEach(function (x) { x.project = groupName(x.project) })
+  ;(D.events || []).forEach(function (e) { e.project = groupName(e.project) })
   var state = { project: '', metric: 'time', q: '', period: 30, hidden: {} }
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   var PALETTE = ${JSON.stringify(PALETTE)}
@@ -221,7 +226,7 @@ const APP = `(function () {
   function total(list, pick) { return list.map(pick).reduce(add, 0) }
   function latest(name) { return tasks.filter(function (t) { return t.project === name }).reduce(function (m, t) { return t.started > m ? t.started : m }, '') }
   var names = Array.from(new Set(tasks.map(function (t) { return t.project }))).sort(function (a, b) { return latest(b).localeCompare(latest(a)) })
-  function colorOf(name) { return PALETTE[names.indexOf(name) % PALETTE.length] }
+  function colorOf(name) { return name === 'Chats' ? '#8d8b84' : PALETTE[names.indexOf(name) % PALETTE.length] }
   function scope() { return state.project ? tasks.filter(function (t) { return t.project === state.project }) : tasks }
   function first(list) { return list.reduce(function (m, t) { return !m || t.started < m ? t.started : m }, '') }
   // Days the chosen period covers; "All" reaches back to the first session on screen.
@@ -260,6 +265,7 @@ const APP = `(function () {
     var list = scope(), name = state.project ? labelOf(state.project) : 'All projects', f = first(list)
     byId('crumb').textContent = state.project ? 'Projects / ' + name : name
     byId('title').textContent = name
+    byId('back').hidden = !state.project
     byId('subtitle').textContent = plural(list.length, 'session') + (f ? ' since ' + shortDate(f.slice(0, 10)) + ', ' + f.slice(0, 4) : '') + (state.project ? '' : ' · ' + plural(new Set(list.map(function (t) { return t.project })).size, 'project'))
   }
 
@@ -413,7 +419,8 @@ const APP = `(function () {
     byId('c-cost').textContent = money(total(cur, METRICS.cost.pick))
     byId('c-tokens').textContent = tok(total(cur, METRICS.tokens.pick))
     byId('c-sessions').textContent = String(cur.length)
-    var g = byId('c-stream'), W = 1200, base = 600, topY = 380; g.textContent = ''
+    cardTiles(list, cur)
+    var g = byId('c-stream'), W = 1200, base = 600, topY = 500; g.textContent = ''
     var layers = projects.map(function (p) { return perDay(cur.filter(function (t) { return t.project === p }), keys, METRICS.time.pick) })
     var totals = keys.map(function (_, i) { return layers.reduce(function (a, r) { return a + r[i] }, 0) }), max = Math.max.apply(null, totals.concat([0]))
     if (max <= 0) return
@@ -483,6 +490,8 @@ const SANS = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 const MONO = "'JetBrains Mono', ui-monospace, Menlo, monospace"
 const cardStat = (y: number, label: string, id: string) =>
   `<text x="760" y="${y}" font-size="20" fill="#8d8b84">${label}</text><text id="${id}" x="1128" y="${y}" text-anchor="end" font-family="${MONO}" font-size="30" fill="#f3f2ee"></text>`
+const tile = (x: number, y: number, label: string, id: string) =>
+  `<text x="${x}" y="${y}" font-size="17" fill="#8d8b84">${label}</text><text id="${id}" x="${x}" y="${y + 36}" font-family="${MONO}" font-size="27" fill="#f3f2ee"></text>`
 const CARD = `<svg id="card" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" font-family="${SANS}">
 <defs>${PALETTE.map((c, i) => `<linearGradient id="cf${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".95"/><stop offset="1" stop-color="${c}" stop-opacity=".55"/></linearGradient>`).join('')}<filter id="cglow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="12"/></filter><radialGradient id="chalo" cx=".62" cy=".8" r=".6"><stop offset="0" stop-color="#5fe08a" stop-opacity=".16"/><stop offset="1" stop-color="#5fe08a" stop-opacity="0"/></radialGradient></defs>
 <rect width="1200" height="630" fill="#070707"/><rect width="1200" height="630" fill="url(#chalo)"/>
@@ -492,6 +501,9 @@ const CARD = `<svg id="card" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120
 <text id="c-scope" x="1128" y="98" text-anchor="end" font-size="20" fill="#8d8b84"></text>
 <text x="72" y="196" font-size="22" fill="#8d8b84">Agent time</text><text id="c-time" x="66" y="292" font-family="${MONO}" font-size="104" font-weight="600" letter-spacing="-5" fill="#f3f2ee"></text>
 ${cardStat(172, 'Cost', 'c-cost')}${cardStat(228, 'Tokens', 'c-tokens')}${cardStat(284, 'Sessions', 'c-sessions')}
+<line x1="72" y1="326" x2="1128" y2="326" stroke="#242422"/>
+${tile(72, 362, 'Projects', 'c-projects')}${tile(360, 362, 'Active days', 'c-active')}${tile(648, 362, 'Streak', 'c-streak')}${tile(936, 362, 'Busiest day', 'c-busiest')}
+${tile(72, 436, 'Reuse', 'c-reuse')}${tile(360, 436, 'Router', 'c-router')}${tile(648, 436, 'Plan pace', 'c-plan')}${tile(936, 436, 'Reviews', 'c-runs')}
 <text x="72" y="621" font-family="${MONO}" font-size="15" fill="#5e5c55">measured in Claude Code</text><text x="1128" y="621" text-anchor="end" font-family="${MONO}" font-size="15" fill="#5fe08a">ponytail.dev</text></svg>`
 
 // JSON inside a script block: "<" is escaped so no name can close the block.
@@ -514,22 +526,21 @@ export function boardHtml(tasks: Task[], now: number, extra: BoardExtra = { even
 <div class="app">
 <aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>ponytail</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
 <main>
-<div class="top"><div><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
+<div class="top"><div><button type="button" class="btn sm" id="back" hidden>← All projects</button><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
 <div class="actions"><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="grp" role="group" aria-label="Export"><button type="button" id="copy-summary">Copy summary</button><button type="button" id="export-all">Export all</button><button type="button" id="share">Share card</button></div></div></div>
+<div class="page on" data-page="overview">
 <section class="kpis" id="kpis"></section>
 <section class="card chart-card"><div class="chart-head"><div><div class="label" id="chart-sub"></div><div class="big num" id="chart-total"></div></div>
 <div class="seg" role="group" aria-label="Metric">${seg('metric', [['time', 'Agent time'], ['cost', 'Cost'], ['tokens', 'Tokens']], 'time')}</div></div>
 <div class="chart-wrap"><svg id="stream" role="img" aria-label="Per project and day"></svg><div class="tip" id="tip" hidden></div></div><div class="legend" id="legend"></div></section>
-<div class="grid2">
-${sectionHtml('projects')}
 <section class="card heat"><h3>Activity</h3><div class="sub">Agent time per day, last 12 weeks</div><svg id="heat" role="img" aria-label="Agent time per day, last 12 weeks"></svg>
 <div class="heroes"><div><div class="hero-label"><i style="color:#5fe08a">✦</i>Active days</div><div class="hero-value num" id="h-active"></div><div class="hero-sub" id="h-active-sub"></div></div>
 <div><div class="hero-label"><i style="color:#ffd166">◆</i>Streak</div><div class="hero-value num" id="h-streak"></div><div class="hero-sub" id="h-streak-sub"></div></div></div><div id="facts"></div></section>
 </div>
-${['context', 'reuse', 'router', 'plans', 'runs', 'extras'].map(sectionHtml).join('\n')}
+${['projects', 'context', 'reuse', 'router', 'plans', 'runs', 'extras'].map(id => `<div class="page" data-page="${id}">${sectionHtml(id)}</div>`).join('\n')}
 <footer>Measured by ponytail's band in Claude Code. Cost is the API-priced cost Claude Code reports (/cost), not a bill. Nothing here is estimated.</footer>
 </main></div>
-<dialog id="export-dialog"><div class="dlg-head"><b>Export all</b><div class="dlg-actions"><button type="button" class="btn" id="export-md">Markdown</button><button type="button" class="btn" id="export-json">JSON</button><button type="button" class="btn" id="export-copy">Copy</button><button type="button" class="btn" id="export-close">Close</button></div></div><div class="dlg-body"><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label></div></dialog>
+<dialog id="export-dialog"><div class="dlg-head"><b>Export all</b><div class="dlg-actions"><button type="button" class="btn" id="export-pdf">PDF</button><button type="button" class="btn" id="export-md">Markdown</button><button type="button" class="btn" id="export-json">JSON</button><button type="button" class="btn" id="export-copy">Copy</button><button type="button" class="btn" id="export-close">Close</button></div></div><div class="dlg-body"><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label></div></dialog>
 <dialog id="share-dialog"><div class="dlg-head"><b>Share card</b><div class="dlg-actions"><button type="button" class="btn" id="save-png">Save PNG</button><button type="button" class="btn" id="save-svg">Save SVG</button><button type="button" class="btn" id="share-close">Close</button></div></div><div class="dlg-body">${CARD}</div></dialog>
 <script type="application/json" id="board-data">${json({ now, tasks, ...extra })}</script>
 <script>${APP}</script></body></html>`

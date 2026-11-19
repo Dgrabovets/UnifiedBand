@@ -91,6 +91,7 @@ const document = {
   createElementNS: (_, tag) => make(tag),
   createTextNode: () => make('text'),
   querySelectorAll: () => [make('q')],
+  querySelector: () => make('q'),
   documentElement: make('html'),
   body: make('body'),
   addEventListener() {},

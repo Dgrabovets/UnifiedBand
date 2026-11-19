@@ -20,9 +20,22 @@ export const sectionHtml = (id: string) => {
   return `<section class="card sec" id="sec-${id}"><div class="sec-head"><div><h3>${title}</h3><div class="sub">${sub}</div></div><div class="exp"><button type="button" class="btn sm" data-export="${id}" aria-haspopup="menu">Export ▾</button></div></div><div class="sec-body" id="b-${id}"></div></section>`
 }
 
-export const SECTION_NAV = SECTIONS.map(([id, title]) => `<button type="button" class="nav-item" data-go="${id === 'overview' ? 'top' : `sec-${id}`}"><span class="name">${title}</span></button>`).join('')
+export const SECTION_NAV = SECTIONS.map(([id, title]) => `<button type="button" class="nav-item" data-tab="${id}"><span class="name">${title}</span></button>`).join('')
 
 export const SECTIONS_CSS = `
+.page{display:none;flex-direction:column;gap:14px}.page.on{display:flex}
+.kpis{margin-bottom:0}.chart-card,.sec{margin-bottom:0}
+.kpi>*{position:relative;z-index:1}.kpi::after{z-index:0}
+#stream{overflow:hidden}.lines{overflow:hidden}
+.nav-item{font-size:14px;padding:9px 12px}.nav-item.on{background:var(--track);color:var(--text)}
+.top .btn.sm[hidden]{display:none}.top .btn.sm{margin-bottom:8px}
+@media print{
+.side,.actions,.exp,.theme,.top .btn.sm,.seg,dialog{display:none!important}
+.app{display:block}main{padding:0;max-width:none}
+.page{display:none}.page.on,.page:not(.print-skip){display:flex}.page.print-skip{display:none!important}
+.card{box-shadow:none;background:#fff;border:1px solid #ddd;break-inside:avoid}.sec,.chart-card,.kpi,.panel{break-inside:avoid}
+body{background:#fff}footer{display:none}
+}
 .nav-item .name{flex:1}
 .sec{padding:20px 22px;margin-bottom:14px;scroll-margin-top:14px}
 .sec-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
@@ -155,31 +168,33 @@ function drawOverviewExport() {
 }
 function drawProjects() {
   var b = byId('b-projects'); b.textContent = ''
-  var cats = categorize(scopeTasks(), EV, CFG)
+  var all = categorize(scopeTasks(), EV, CFG), cats = all.filter(function (p) { return p.name !== 'Chats' }), chats = all.filter(function (p) { return p.name === 'Chats' })[0]
   if (state.project) {
     var me = cats.filter(function (p) { return p.name === state.project })[0], back = h('button', 'btn sm', '← All projects'); back.type = 'button'
-    back.addEventListener('click', function () { state.project = ''; state.hidden = {}; render(); window.scrollTo(0, 0) })
+    back.addEventListener('click', function () { state.project = ''; state.hidden = {}; render() })
     var chip = h('span', 'cat-chip', me ? me.category : 'No sessions in this period'), dot = h('i', 'ldot'); dot.style.background = me ? (CATS.filter(function (c) { return c[0] === me.category })[0] || ['', C.blue])[1] : C.blue; chip.prepend(dot)
     b.append(row('li', [back, chip, h('span', 'sp'), h('span', 'mut', me ? plural(me.sessions, 'session') + ' · ' + plural(me.days, 'day') + ' · ' + money(me.cost) : '')]))
     setExport('projects', 'Project', ['Metric', 'Value'], me ? [['Name', labelOf(me.name)], ['Category', me.category], ['Sessions', String(me.sessions)], ['Turns', String(me.turns)], ['Cost', money(me.cost)], ['Days', String(me.days)], ['Plan', me.plan ? 'yes' : 'no']] : [])
     return
   }
-  if (!cats.length) return emptyBody('projects', 'Projects', 'No sessions in this period.')
-  var tiles = h('div', 'pcat'), all = total(cats, function (p) { return p.cost }) || 1
+  if (!cats.length && !chats) return emptyBody('projects', 'Projects', 'No sessions in this period.')
+  var tiles = h('div', 'pcat'), spend = total(cats, function (p) { return p.cost }) || 1
   CATS.forEach(function (c) {
     var t = h('div', 'tile'), l = h('span'), dot = h('i', 'ldot'); dot.style.background = c[1]; l.append(dot, document.createTextNode(c[0]))
-    t.append(l, h('b', '', String(cats.filter(function (p) { return p.category === c[0] }).length))); tiles.append(t)
+    var isChat = c[0] === 'Chat'
+    if (isChat) l.lastChild.textContent = 'Chats, sessions'
+    t.append(l, h('b', '', isChat ? String(chats ? chats.sessions : 0) : String(cats.filter(function (p) { return p.category === c[0] }).length))); tiles.append(t)
   })
   b.append(h('div', 'stat-l', plural(cats.length, 'project') + ' worked on'), tiles, h('div', 'stat-s', 'Large projects, share of cost. Click one for its own page.'))
   cats.filter(function (p) { return p.category === 'Large' }).forEach(function (p) {
     var r = h('button', 'proj'), t = h('div', 'hbar'), i = h('i'); r.type = 'button'
-    i.style.width = Math.max(2, p.cost / all * 100) + '%'; i.style.background = C.red; t.append(i)
+    i.style.width = Math.max(2, p.cost / spend * 100) + '%'; i.style.background = C.red; t.append(i)
     r.append(h('span', '', labelOf(p.name)), t, h('span', 'num', money(p.cost)), h('span', 'mut', '›'))
-    r.addEventListener('click', function () { state.project = p.name; state.hidden = {}; render(); window.scrollTo(0, 0) })
+    r.addEventListener('click', function () { state.project = p.name; state.hidden = {}; render(); showPage('overview') })
     b.append(r)
   })
   if (!cats.some(function (p) { return p.category === 'Large' })) b.append(h('div', 'empty-sec', 'No large project in this period.'))
-  setExport('projects', 'Projects', ['Project', 'Category', 'Sessions', 'Turns', 'Cost', 'Days', 'Plan'], cats.map(function (p) { return [labelOf(p.name), p.category, String(p.sessions), String(p.turns), money(p.cost), String(p.days), p.plan ? 'yes' : 'no'] }))
+  setExport('projects', 'Projects', ['Project', 'Category', 'Sessions', 'Turns', 'Cost', 'Days', 'Plan'], all.map(function (p) { return [labelOf(p.name), p.category, String(p.sessions), String(p.turns), money(p.cost), String(p.days), p.plan ? 'yes' : 'no'] }))
 }
 
 // ---- context and limits ----------------------------------------------------------------------------------------------
@@ -317,6 +332,38 @@ function drawExtras() {
   setExport('extras', 'Extras', ['Metric', 'Value'], rows)
 }
 
+// The numbers the share card carries beside the hero: projects, activity, reuse, router, plans and reviews.
+function cardTiles(list, cur) {
+  var cats = categorize(cur, EV, CFG).filter(function (p) { return p.name !== 'Chats' }), large = cats.filter(function (p) { return p.category === 'Large' }).length
+  var vals = perDay(list, days(84), METRICS.time.pick), active = vals.filter(function (v) { return v > 0 }).length, streak = 0, by = {}
+  for (var j = vals[83] > 0 ? 83 : 82; j >= 0 && vals[j] > 0; j--) streak++
+  cur.forEach(function (t) { var k = t.started.slice(0, 10); by[k] = (by[k] || 0) + t.agentMinutes })
+  var busiest = Object.keys(by).sort(function (a, b) { return by[b] - by[a] })[0], re = cur.filter(function (t) { return t.reuse != null }).map(function (t) { return t.reuse })
+  var ev = scopeEv(), r = routerStats(scopeAud(), ev), pl = planStats(ev, cats.map(function (p) { return p.name }), now), rs = runStats(ev, now)
+  function put(id, v) { byId(id).textContent = v }
+  put('c-projects', cats.length + (large ? ' · ' + large + ' large' : ''))
+  put('c-active', active + ' of 84 days'); put('c-streak', plural(streak, 'day')); put('c-busiest', busiest ? shortDate(busiest) + ' · ' + time(by[busiest] * 60000) : '–')
+  put('c-reuse', re.length ? Math.round(mean(re)) + '%' : '–'); put('c-router', r.total ? Math.round(r.stayed / r.total * 100) + '% kept' : '–')
+  put('c-plan', pl.velocity ? num1(pl.velocity) + ' items/day' : '–'); put('c-runs', rs.runs ? plural(rs.runs, 'run') : '–')
+}
+
+// One page at a time: the nav and the remembered choice follow it.
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(function (p) { p.classList.toggle('on', p.getAttribute('data-page') === id) })
+  document.querySelectorAll('[data-tab]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === id) })
+  try { localStorage.setItem('ponytail-board-page', id) } catch (e) {}
+  window.scrollTo(0, 0)
+  if (id === 'overview') chart()
+}
+// PDF through the browser's print dialog ("Save as PDF"): only the chosen pages, in the light theme, put back afterwards.
+function printIds(ids) {
+  var pages = document.querySelectorAll('.page'), theme = document.documentElement.getAttribute('data-theme')
+  pages.forEach(function (p) { p.classList.toggle('print-skip', ids.indexOf(p.getAttribute('data-page')) < 0) })
+  document.documentElement.setAttribute('data-theme', 'light')
+  window.onafterprint = function () { pages.forEach(function (p) { p.classList.remove('print-skip') }); document.documentElement.setAttribute('data-theme', theme); window.onafterprint = null }
+  window.print()
+}
+
 function renderSections() { drawOverviewExport(); drawProjects(); drawContext(); drawReuse(); drawRouter(); drawPlans(); drawRuns(); drawExtras() }
 
 // ---- export ---------------------------------------------------------------------------------------------------------
@@ -342,6 +389,7 @@ function saveSection(id, fmt) {
   var e = EXPORTS[id] || { title: id, headers: [], rows: [] }
   if (fmt === 'md') saveText(mask(toMd(e), false), 'board-' + id + '.md', 'text/markdown')
   else if (fmt === 'csv') saveText(toCsv(e), 'board-' + id + '.csv', 'text/csv')
+  else if (fmt === 'pdf') printIds([id])
   else saveText(JSON.stringify({ scope: stamp(), section: e }, null, 2), 'board-' + id + '.json', 'application/json')
 }
 function copyText(text, btn, done) {
@@ -354,14 +402,16 @@ function closeMenus() { document.querySelectorAll('.menu').forEach(function (m) 
 function wireExport() {
   document.querySelectorAll('[data-export]').forEach(function (btn) {
     var id = btn.getAttribute('data-export'), menu = h('div', 'menu'); menu.hidden = true
-    ;[['Markdown', 'md'], ['CSV', 'csv'], ['JSON', 'json']].forEach(function (f) { var m = h('button', '', f[0]); m.type = 'button'; m.addEventListener('click', function () { menu.hidden = true; saveSection(id, f[1]) }); menu.append(m) })
+    ;[['PDF', 'pdf'], ['Markdown', 'md'], ['CSV', 'csv'], ['JSON', 'json']].forEach(function (f) { var m = h('button', '', f[0]); m.type = 'button'; m.addEventListener('click', function () { menu.hidden = true; saveSection(id, f[1]) }); menu.append(m) })
     btn.parentNode.append(menu)
     btn.addEventListener('click', function (ev) { ev.stopPropagation(); var open = menu.hidden; closeMenus(); menu.hidden = !open })
   })
   document.addEventListener('click', closeMenus)
-  document.querySelectorAll('[data-go]').forEach(function (b) {
-    b.addEventListener('click', function () { var id = b.getAttribute('data-go'), el = id === 'top' ? document.body : byId(id); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) })
-  })
+  document.querySelectorAll('[data-tab]').forEach(function (b) { b.addEventListener('click', function () { showPage(b.getAttribute('data-tab')) }) })
+  byId('back').addEventListener('click', function () { state.project = ''; state.hidden = {}; render() })
+  var saved = 'overview'
+  try { saved = localStorage.getItem('ponytail-board-page') || 'overview' } catch (e) {}
+  showPage(document.querySelector('.page[data-page="' + saved + '"]') ? saved : 'overview')
   byId('copy-summary').addEventListener('click', function (e) { copyText(summaryMd(), e.target, 'Copied') })
   var dlg = byId('export-dialog'), list = byId('export-list')
   ;['overview', 'projects', 'context', 'reuse', 'router', 'plans', 'runs', 'extras'].forEach(function (id) {
@@ -371,6 +421,7 @@ function wireExport() {
   function chosen() { return Array.from(list.querySelectorAll('input')).filter(function (c) { return c.checked }).map(function (c) { return c.value }) }
   byId('export-all').addEventListener('click', function () { dlg.showModal() })
   byId('export-close').addEventListener('click', function () { dlg.close() })
+  byId('export-pdf').addEventListener('click', function () { dlg.close(); printIds(chosen()) })
   byId('export-md').addEventListener('click', function () { saveText(allMd(chosen(), byId('hide-names').checked), 'ponytail-board.md', 'text/markdown') })
   byId('export-json').addEventListener('click', function () { saveText(mask(JSON.stringify({ scope: stamp(), sections: chosen().map(function (id) { return EXPORTS[id] }) }, null, 2), byId('hide-names').checked), 'ponytail-board.json', 'application/json') })
   byId('export-copy').addEventListener('click', function (e) { copyText(allMd(chosen(), byId('hide-names').checked), e.target, 'Copied') })
