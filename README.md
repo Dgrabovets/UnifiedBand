@@ -1,5 +1,8 @@
 # Unified Band
 
+[![CI](https://github.com/Dgrabovets/UnifiedBand/actions/workflows/ci.yml/badge.svg)](https://github.com/Dgrabovets/UnifiedBand/actions/workflows/ci.yml) [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+
+
 Ponytail (mode, skills, task tracking and board) merged with one band above the Claude Code prompt, in a single mod.
 
 ## What it shows
