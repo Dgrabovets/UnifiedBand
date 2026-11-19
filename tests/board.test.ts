@@ -29,6 +29,9 @@ test('the page has every section, the grouped buttons, the export dialog and no 
   expect(html.includes('data-page="projects"')).toBe(false)
   expect(html.indexOf('id="sec-projects"')).toBeGreaterThan(html.indexOf('data-page="overview"'))
   expect(html.indexOf('id="sec-projects"')).toBeLessThan(html.indexOf('class="card heat"'))
+  expect(html.includes('<title>Unified Band</title>')).toBe(true)
+  expect(html.includes('ponytail.dev')).toBe(false)
+  expect(html.includes('Open ›')).toBe(false)
   expect(html.includes('id="legend"')).toBe(false)
   expect(html.includes('.prow{display:grid')).toBe(true)
   expect(html.includes('id="back"')).toBe(false)
@@ -42,4 +45,10 @@ test('the journal, the router log and board.json reach the page as data', () => 
   expect(data.events.length).toBe(1)
   expect(data.audit[0].parent).toBe('sonnet')
   expect(data.config.projects.A.label).toBe('Sip & Tell')
+})
+
+test('board.json can rename the dashboard, and the name is escaped', () => {
+  const html = boardHtml([], 1, { events: [], audit: [], config: { title: 'My <Board>' } })
+  expect(html.includes('<title>My &lt;Board&gt;</title>')).toBe(true)
+  expect(html.includes('<title>Unified Band</title>')).toBe(false)
 })

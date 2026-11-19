@@ -39,6 +39,8 @@ The Board button opens a local page (no server, no network) built from three sou
 
 The event journal lives in `~/.config/ponytail/band/events-YYYY-MM.jsonl`: one line per turn, prompt, compaction, `/model` command, subagent turn and review or audit run. It never stores prompt text, only counts and flags. History starts the day the journal is first written.
 
+The dashboard is called Unified Band, with a hexagon-and-bars mark of its own. Set `"title"` in `board.json` to call it something else; the name shows in the sidebar, the tab, the share card and the exports.
+
 ### board.json
 
 Optional, next to the journal. Rename a project, force its category, merge two folders into one project (`aliases`) or add folders to the Chats group (`chats`):
