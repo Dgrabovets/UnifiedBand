@@ -165,7 +165,7 @@ async function record($: EngineInterface, b: Band, options: Options) {
 }
 
 // Builds board.html from every project's ledger.
-async function writeBoard($: EngineInterface, dir: string) {
+export async function writeBoard($: EngineInterface, dir: string) {
   const entries = await $.fs.list(dir).catch(() => [])
   const texts = await Promise.all(entries.filter(f => f.kind === 'file' && f.name.endsWith('.csv')).map(f => $.fs.read(`${dir}/${f.name}`).catch(() => '')))
   const file = `${dir}/board.html`

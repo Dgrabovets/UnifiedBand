@@ -3,7 +3,8 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Live } from '../types'
 import { EMPTY_LIVE, afterCompact, afterModelCommand, refresh } from './band/live'
-import { track } from './band/track'
+import { bandDir } from './band/events'
+import { track, writeBoard } from './band/track'
 
 const NAME = 'unified-band'
 const LEVELS = ['off', 'lite', 'full', 'ultra'] as const
@@ -55,15 +56,9 @@ type Options = { readonly [field: string]: unknown }
 // The same commands a person types, so Ponytail's own skills stay the only logic.
 const run = ($: EngineInterface, command: string, args = '') => $.command.run({ command, args })
 
-// Ponytail rebuilds board.html after every turn; opening it needs no code from Ponytail.
-// shortcut: ~/.config only, as Ponytail writes it; Windows opens it with cmd start.
+// The Board is rebuilt from the ledger and the journal at every press, so it is never older than the click.
 async function openBoard($: EngineInterface) {
-  const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
-  const file = `${(await $.env.get('XDG_CONFIG_HOME')) ?? `${home}/.config`}/ponytail/band/board.html`
-  if (!(await $.fs.exists(file).catch(() => false))) {
-    $.ui.toast('Board Not Built Yet, Finish A Turn First')
-    return
-  }
+  const file = await writeBoard($, await bandDir($))
   const windows = (await $.env.get('OS')) === 'Windows_NT'
   await $.process.run(windows ? ['cmd', '/c', 'start', '', file] : ['xdg-open', file])
 }
