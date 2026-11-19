@@ -47,19 +47,22 @@ export async function boardExtra($: EngineInterface) {
       } catch {}
     }
   }
-  const audit = ((await $.fs.read(await routerLogPath($)).catch(() => '')) as string)
-    .split('\n')
-    .flatMap(line => {
-      try {
-        const r = JSON.parse(line)
-        // Outcome rows (a delegated worker, a reconciled decision) carry no decision and are not prompts.
-        if (!r.decision) return []
-        return [{ ts: Date.parse(r.ts), session: r.session_id, parent: r.decision?.parent, model: r.decision?.model, effort: r.decision?.effort, tier: r.decision?.tier, conf: r.decision?.confidence, outcome: r.outcome, reason: r.decision?.reason }]
-      } catch {
-        return []
-      }
-    })
+  const log = ((await $.fs.read(await routerLogPath($)).catch(() => '')) as string).split('\n').flatMap(line => {
+    try {
+      return [JSON.parse(line)]
+    } catch {
+      return []
+    }
+  })
+  // Outcome rows (a delegated worker, a reconciled decision) carry no decision and are not prompts.
+  const audit = log
+    .filter(r => r.decision)
+    .map(r => ({ ts: Date.parse(r.ts), session: r.session_id, parent: r.decision?.parent, model: r.decision?.model, effort: r.decision?.effort, tier: r.decision?.tier, conf: r.decision?.confidence, outcome: r.outcome, reason: r.decision?.reason, fanout: r.decision?.fanout === true }))
+  // What the delegated workers did: the launch row (duration) and the usage row of a finished worker.
+  const workers = log
+    .filter(r => r.kind === 'router' && (r.outcome === 'delegated' || r.outcome === 'delegated_failed' || r.outcome === 'worker_usage'))
+    .map(r => ({ ts: Date.parse(r.ts), session: r.session_id, outcome: r.outcome, model: r.model, actual: r.model_actual, ms: r.duration_ms, input: (r.usage?.tokens_in ?? 0) + (r.usage?.cache_write ?? 0), output: r.usage?.tokens_out ?? 0 }))
   // A broken board.json costs only the config, not the journal and the router log.
   const config = await $.fs.read(`${dir}/board.json`).then(JSON.parse).catch(() => ({}))
-  return { events: events.sort((a, b) => ((a as Ev).ts ?? 0) - ((b as Ev).ts ?? 0)), audit, config }
+  return { events: events.sort((a, b) => ((a as Ev).ts ?? 0) - ((b as Ev).ts ?? 0)), audit, workers, config }
 }

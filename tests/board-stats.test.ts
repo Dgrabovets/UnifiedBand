@@ -1,8 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
-import { categorize, maskTree, contextStats, extraStats, fiveStats, planStats, reuseStats, routerStats, runStats, weeklyStats } from '../hooks/band/board-stats'
+import { categorize, maskTree, contextStats, extraStats, fiveStats, planStats, reuseStats, routerReport, routerStats, runStats, weeklyStats } from '../hooks/band/board-stats'
 
-const S = { contextStats, fiveStats, weeklyStats, reuseStats, routerStats, planStats, runStats, categorize, extraStats }
+const S = { contextStats, fiveStats, weeklyStats, reuseStats, routerReport, routerStats, planStats, runStats, categorize, extraStats }
 
 const MIN = 60000
 const T0 = Date.UTC(2026, 10, 10, 12)
@@ -46,6 +46,29 @@ test('router: matrix counts, stayed, up and down, and a /model after a routed pr
   expect(r.matrix['sonnet>sonnet']).toBe(1)
   expect([r.stayed, r.up, r.down, r.routed, r.corrected]).toEqual([1, 1, 1, 2, 1])
   expect(Math.abs(r.avgConf - 0.8) < 1e-9).toBe(true)
+})
+
+test('router report: corrections and time by routed or kept, workers, and tips', () => {
+  const rows = [
+    ...Array.from({ length: 10 }, (_, i) => ({ ts: T0 + i * 60 * MIN, session: 's1', parent: 'opus', model: 'opus', outcome: 'silent', tier: 'standard', reason: 'moderate scope, no complex signals', fanout: i === 0 })),
+    { ts: T0 + 11 * 60 * MIN, session: 's1', parent: 'opus', model: 'sonnet', outcome: 'routed', tier: 'standard', reason: 'x', fanout: false },
+  ]
+  const events = [
+    ...Array.from({ length: 10 }, (_, i) => ({ t: 'turn', ts: T0 + i * 60 * MIN + MIN, session: 's1', ms: 4000 })),
+    { t: 'turn', ts: T0 + 11 * 60 * MIN + MIN, session: 's1', ms: 9000 },
+    { t: 'model', ts: T0 + 11 * 60 * MIN + 2 * MIN, session: 's1' },
+  ]
+  const workers = [
+    { ts: T0, outcome: 'delegated', model: 'sonnet', ms: 1000 },
+    { ts: T0, outcome: 'delegated_failed', model: 'sonnet' },
+    { ts: T0, outcome: 'worker_usage', model: 'sonnet', actual: 'claude-sonnet-5-5', input: 100, output: 50 },
+  ]
+  const r = S.routerReport(rows, workers, events)
+  expect([r.kept.n, r.sent.n, r.sent.fixedPct, r.kept.fixedPct, r.sent.ms, r.kept.ms]).toEqual([10, 1, 100, 0, 9000, 4000])
+  expect([r.workers.launched, r.workers.failed, r.workers.done, r.workers.tokens.sonnet.output]).toEqual([2, 1, 1, 50])
+  expect(r.fanout).toBe(1)
+  expect(r.tips.some((t: string) => t.includes('catch-all'))).toBe(true)
+  expect(r.tips.some((t: string) => t.includes('failed'))).toBe(true)
 })
 
 test('plans: velocity, projects without a plan and stalled plans', () => {

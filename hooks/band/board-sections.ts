@@ -99,7 +99,7 @@ body{background:#fff}footer{display:none}
 `
 
 export const SECTIONS_JS = `
-var EV = D.events || [], AUD = D.audit || [], CFG = D.config || {}
+var EV = D.events || [], AUD = D.audit || [], WK = D.workers || [], CFG = D.config || {}
 var C = { blue: '#6cb4f0', purple: '#b07cf0', green: '#4fc88e', amber: '#f0a050', red: '#e0605a', pink: '#e0709a', teal: '#3cc4b0', yellow: '#f0c85a' }
 var NL = String.fromCharCode(10), NBSP = String.fromCharCode(160), EXPORTS = {}, uid = 0, sessionProject = {}
 var CATS = [['Large', C.red], ['Medium', C.amber], ['Small', C.green], ['Chat', C.blue]]
@@ -108,6 +108,7 @@ function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s }
 function sinceMs() { return state.period ? now - state.period * DAY : 0 }
 function scopeEv() { return EV.filter(function (e) { return e.ts >= sinceMs() && (!state.project || e.project === state.project) }) }
 function scopeAud() { return AUD.filter(function (r) { return r.ts >= sinceMs() && (!state.project || sessionProject[r.session] === state.project) }) }
+function scopeWk() { return WK.filter(function (r) { return r.ts >= sinceMs() && (!state.project || sessionProject[r.session] === state.project) }) }
 function scopeTasks() { return inDays(scope(), days(span())) }
 function labelOf(name) { var o = (CFG.projects || {})[name]; return o && o.label ? o.label : name }
 function pct(v) { return v == null ? '–' : Math.round(v) + '%' }
@@ -323,8 +324,14 @@ function drawRouter() {
     tb.append(tr)
   })
   last.append(t, h('div', 'note', 'The router logs your model, the chosen model, effort, outcome and reason. A /model within ten minutes of a routed prompt counts as a correction.'))
-  b.append(matrix, last)
-  setExport('router', 'Model Router', ['You were on', 'Sent to', 'Count'], Object.keys(r.matrix).map(function (k) { var p = k.split('>'); return [cap(p[0]), cap(p[1]), String(r.matrix[k])] }).concat([['Saved, est.', '', money(r.saved)], ['Extra, est.', '', money(r.extra)], ['Corrected by you', '', String(r.corrected)]]))
+  var rep = routerReport(rows, scopeWk(), ev), secs = function (ms) { return ms == null ? '–' : ms < 60000 ? Math.round(ms / 1000) + 's' : dur(Math.round(ms / 60000)) }
+  var wtok = Object.keys(rep.workers.tokens).map(function (k) { return cap(k) + ' ' + tok(rep.workers.tokens[k].input + rep.workers.tokens[k].output) }).join(' · ')
+  var report = panel('Router report', 'The three goals of the original router report, from your own log.',
+    row('stats4', [stat('Cost', money(r.saved - r.extra), 'saved net, est.', r.saved >= r.extra ? C.green : C.red), stat('Corrected', pct(rep.sent.fixedPct) + ' / ' + pct(rep.kept.fixedPct), 'routed / kept prompts'), stat('Time to result', secs(rep.sent.ms) + ' / ' + secs(rep.kept.ms), 'routed / kept, first turn'), stat('Workers', String(rep.workers.launched), rep.workers.failed ? rep.workers.failed + ' failed' : wtok || 'none launched')]),
+    row('leg', Object.keys(rep.tiers).sort(function (a, c) { return rep.tiers[c] - rep.tiers[a] }).map(function (k) { return h('span', '', cap(k) + ': ' + rep.tiers[k]) }).concat(rep.fanout ? [h('span', '', 'Fan-out: ' + rep.fanout)] : [])),
+    rep.tips.length ? row('tips', rep.tips.map(function (x) { return h('div', 'note', x) })) : h('div', 'note', 'Nothing to change yet: the log shows no pattern that needs a rule.'))
+  b.append(matrix, report, last)
+  setExport('router', 'Model Router',['You were on', 'Sent to', 'Count'], Object.keys(r.matrix).map(function (k) { var p = k.split('>'); return [cap(p[0]), cap(p[1]), String(r.matrix[k])] }).concat([['Saved, est.', '', money(r.saved)], ['Extra, est.', '', money(r.extra)], ['Corrected by you', '', String(r.corrected)], ['Corrected, routed', '', pct(rep.sent.fixedPct)], ['Corrected, kept', '', pct(rep.kept.fixedPct)], ['Workers launched', '', String(rep.workers.launched)]].concat(rep.tips.map(function (x) { return ['Tip', '', x] }))))
 }
 
 // ---- plans ----------------------------------------------------------------------------------------------------------
@@ -438,13 +445,13 @@ function rawData() {
       return o
     }),
     events: EV.map(function (e) { var o = {}; for (var k in e) if (k !== 'root') o[k] = e[k]; return o }),
-    router: AUD, summary: summary
+    router: AUD, workers: WK, summary: summary
   }
   // Only what the ticked sections draw on: the ledger for Overview, Projects, Reuse and Extras; the journal for most others; the router log for Router.
   out.sections = ids
   if (!has('overview', 'projects', 'reuse', 'extras')) delete out.tasks
   if (!has('context', 'reuse', 'router', 'plans', 'runs', 'extras')) delete out.events
-  if (!has('router')) delete out.router
+  if (!has('router')) { delete out.router; delete out.workers }
   if (byId('hide-names').checked) { var m = hideMap(); out = maskTree(out, m); out.config = maskTree(CFG, m, true); out.scope = stamp(m) }
   return JSON.stringify(out, null, 1)
 }
