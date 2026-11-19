@@ -1,6 +1,8 @@
 // The task board: one self-contained HTML page built from the band's CSV ledgers.
 // No server and no network: inline CSS, inline SVG and a few lines of script.
 
+import { STATS_SRC } from './board-stats'
+import { SECTIONS_CSS, SECTIONS_JS, SECTION_NAV, sectionHtml } from './board-sections'
 import { LOGO_PATHS, LOGO_VIEWBOX } from './logo'
 
 export const duration = (minutes: number) =>
@@ -18,6 +20,7 @@ export const fmtTokens = (n: number) =>
   n < 1000 ? `${n}` : n < 1e6 ? `${+(n / 1e3).toFixed(1)}k` : `${+(n / 1e6).toFixed(1)}M`
 
 export type Task = {
+  key: string
   started: string
   project: string
   name: string
@@ -62,14 +65,18 @@ export function parseCsv(text: string): string[][] {
   return rows
 }
 
+// The folder name of a ledger project, whichever separator its path uses.
+const folderName = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '').split('/').pop() || path
+
 export function tasksFrom(text: string): Task[] {
   const [head, ...rows] = parseCsv(text)
   if (!head?.includes('key')) return []
   const at = (row: string[], col: string) => row[head.indexOf(col)] ?? ''
   const num = (row: string[], col: string) => Number(at(row, col)) || 0
   return rows.map(row => ({
+    key: at(row, 'key'),
     started: at(row, 'started'),
-    project: at(row, 'project'),
+    project: folderName(at(row, 'project')),
     name: at(row, 'name'),
     cost: num(row, 'cost_usd'),
     turns: num(row, 'turns'),
@@ -79,7 +86,8 @@ export function tasksFrom(text: string): Task[] {
     tests: at(row, 'tests'),
     level: at(row, 'level'),
     model: at(row, 'model'),
-  }))
+    // A row from an older ledger layout has no usable start time; it would put "undefined" in the subtitle and break the day charts.
+  })).filter(t => /^\d{4}-\d{2}-\d{2}/.test(t.started))
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -176,7 +184,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 @media (max-width:1360px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:1100px){.grid2{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;border-right:0;border-bottom:1px solid var(--line)}
-.side-label,.foot-text,.foot-sep{display:none}.side-foot{margin:0 0 0 auto;padding:0;border:0}.brand{padding:2px 10px}#projects{display:flex;gap:4px;flex-wrap:wrap}.nav-item{width:auto}
+.side-label,.foot-text,.foot-sep{display:none}.side-foot{margin:0 0 0 auto;padding:0;border:0}.brand{padding:2px 10px}#sections{display:flex;gap:4px;flex-wrap:wrap}.nav-item{width:auto}
 main{padding:16px}.search{width:160px}.big{font-size:32px}}
 @media (max-width:520px){.kpis{grid-template-columns:minmax(0,1fr)}.top .actions{width:100%;justify-content:space-between}.list-head{flex-wrap:wrap}.search{width:100%}}`
 
@@ -248,22 +256,11 @@ const APP = `(function () {
   }
   function blur(parent, id, sd) { svg('feGaussianBlur', { stdDeviation: sd }, svg('filter', { id: id, x: '-20%', y: '-50%', width: '140%', height: '200%' }, parent)) }
 
-  function sidebar() {
-    var nav = byId('projects'); nav.textContent = ''
-    ;[['', 'All projects', tasks.length]].concat(names.map(function (n) { return [n, n, tasks.filter(function (t) { return t.project === n }).length] })).forEach(function (p) {
-      var b = h('button', 'nav-item' + (state.project === p[0] ? ' on' : '')); b.type = 'button'; b.title = p[1]
-      if (p[0]) { var d = h('span', 'dot'); d.style.setProperty('--c', colorOf(p[0])); b.append(d) }
-      b.append(h('span', 'name', p[1]), h('span', 'n', String(p[2])))
-      b.addEventListener('click', function () { state.project = p[0]; state.hidden = {}; render() })
-      nav.append(b)
-    })
-  }
-
   function header() {
-    var list = scope(), name = state.project || 'All projects', f = first(list)
-    byId('crumb').textContent = name
+    var list = scope(), name = state.project ? labelOf(state.project) : 'All projects', f = first(list)
+    byId('crumb').textContent = state.project ? 'Projects / ' + name : name
     byId('title').textContent = name
-    byId('subtitle').textContent = plural(list.length, 'session') + (f ? ' since ' + shortDate(f.slice(0, 10)) + ', ' + f.slice(0, 4) : '')
+    byId('subtitle').textContent = plural(list.length, 'session') + (f ? ' since ' + shortDate(f.slice(0, 10)) + ', ' + f.slice(0, 4) : '') + (state.project ? '' : ' · ' + plural(new Set(list.map(function (t) { return t.project })).size, 'project'))
   }
 
   function sparkline(values, i, k) {
@@ -351,32 +348,6 @@ const APP = `(function () {
     })
   }
 
-  function pill(text) {
-    var kind = /passed/.test(text) ? 'ok' : /failed/.test(text) ? 'bad' : /stale/.test(text) ? 'warn' : ''
-    var p = h('span', 'pill ' + kind); p.append(h('i'), document.createTextNode(text || 'not run')); return p
-  }
-
-  function table() {
-    var body = byId('rows'), q = state.q.trim().toLowerCase(); body.textContent = ''
-    var list = inDays(scope(), days(span())).filter(function (t) { return !q || (t.name + ' ' + t.project + ' ' + modelName(t.model)).toLowerCase().indexOf(q) >= 0 })
-      .sort(function (a, b) { return b.started.localeCompare(a.started) })
-    byId('count').textContent = String(list.length)
-    if (!list.length) {
-      var tr = h('tr'), td = h('td', 'empty', q ? 'No session matches.' : tasks.length ? 'No sessions in this period.' : 'No sessions yet. The band records a session after its first turn.')
-      td.colSpan = 6; tr.append(td); body.append(tr); return
-    }
-    var max = Math.max.apply(null, list.map(function (t) { return t.agentMinutes })) || 1
-    list.forEach(function (t) {
-      var tr = h('tr'), name = h('td', 'name'), task = h('div', 'task', t.name || 'Untitled session'), bar = h('div', 'bar'), tests = h('td')
-      task.title = t.name; bar.style.setProperty('--c', colorOf(t.project)); bar.style.width = Math.max(4, t.agentMinutes / max * 100) + '%'
-      name.append(task, h('div', 'sub', (state.project ? '' : t.project + ' · ') + shortDate(t.started.slice(0, 10)) + ', ' + t.started.slice(11) + (t.model ? ' · ' + modelName(t.model) : '')), bar)
-      // An imported session has no test record: a dash, not "not run".
-      tests.append(t.tests || t.level !== 'import' ? pill(t.tests) : h('span', 'sub', '–'))
-      tr.append(name, h('td', 'r num', time(t.agentMinutes * 60000)), h('td', 'r num', money(t.cost)), h('td', 'r num', tok(t.tokens)), h('td', 'r num', String(t.turns)), tests)
-      body.append(tr)
-    })
-  }
-
   // Thermal ramp: a quiet indigo for a little agent time, through red to yellow for the most.
   var HEAT = [[0, [58, 48, 120]], [.4, [150, 45, 112]], [.65, [235, 72, 58]], [.85, [255, 140, 60]], [1, [255, 214, 102]]]
   function heatColor(a) {
@@ -456,7 +427,10 @@ const APP = `(function () {
     shapes.forEach(function (s) { svg('path', { d: s.d, fill: s.fill }, g) })
   }
 
-  function render() { sidebar(); header(); kpis(); chart(); table(); heat(); card() }
+  ${STATS_SRC}
+  ${SECTIONS_JS}
+
+  function render() { header(); kpis(); chart(); heat(); card(); renderSections() }
 
   function download(blob, name) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click() }
   // The saved card carries its own copy of the logo, so it stands alone.
@@ -471,7 +445,6 @@ const APP = `(function () {
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(cardText())
   }
 
-  byId('q').addEventListener('input', function (e) { state.q = e.target.value; table() })
   document.querySelectorAll('[data-metric]').forEach(function (b) {
     b.addEventListener('click', function () { state.metric = b.getAttribute('data-metric'); document.querySelectorAll('[data-metric]').forEach(function (x) { x.classList.toggle('on', x === b) }); chart() })
   })
@@ -501,6 +474,7 @@ const APP = `(function () {
   })
 
   render()
+  wireExport()
 })()`
 
 // The share card stays dark in both themes: an image for X or LinkedIn, not part of the page's look.
@@ -529,32 +503,34 @@ const THEME_BUTTON = '<button type="button" class="theme" id="theme" data-choice
 // The tab icon: the same face, centred on a square canvas.
 const FAVICON = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-78 0 1241 1241"><g fill="#1d1c1a">${LOGO_PATHS}</g></svg>`)}`
 
-const SEARCH_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+// What the journal and the router log add to the ledger: events, router decisions and the owner's board.json.
+export type BoardExtra = { events: unknown[]; audit: unknown[]; config: unknown }
 
-export function boardHtml(tasks: Task[], now: number): string {
+export function boardHtml(tasks: Task[], now: number, extra: BoardExtra = { events: [], audit: [], config: {} }): string {
   const seg = (attr: string, items: [string, string][], on: string) =>
     items.map(([value, label]) => `<button type="button" data-${attr}="${value}"${value === on ? ' class="on"' : ''}>${label}</button>`).join('')
-  return `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ponytail board</title><link rel="icon" href="${FAVICON}"><style>${CSS}</style></head>
+  return `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ponytail board</title><link rel="icon" href="${FAVICON}"><style>${CSS}${SECTIONS_CSS}</style></head>
 <body><svg class="sprite" aria-hidden="true" focusable="false"><symbol id="pt-logo" viewBox="${LOGO_VIEWBOX}"><g fill="#1d1c1a">${LOGO_PATHS}</g></symbol></svg>
 <div class="app">
-<aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>ponytail</div><div class="side-label">Projects</div><nav id="projects"></nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
+<aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>ponytail</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
 <main>
 <div class="top"><div><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
-<div class="actions"><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><button type="button" class="btn" id="share">Share card</button></div></div>
+<div class="actions"><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="grp" role="group" aria-label="Export"><button type="button" id="copy-summary">Copy summary</button><button type="button" id="export-all">Export all</button><button type="button" id="share">Share card</button></div></div></div>
 <section class="kpis" id="kpis"></section>
 <section class="card chart-card"><div class="chart-head"><div><div class="label" id="chart-sub"></div><div class="big num" id="chart-total"></div></div>
 <div class="seg" role="group" aria-label="Metric">${seg('metric', [['time', 'Agent time'], ['cost', 'Cost'], ['tokens', 'Tokens']], 'time')}</div></div>
 <div class="chart-wrap"><svg id="stream" role="img" aria-label="Per project and day"></svg><div class="tip" id="tip" hidden></div></div><div class="legend" id="legend"></div></section>
 <div class="grid2">
-<section class="card list"><div class="list-head"><h3>Sessions<span class="n" id="count"></span></h3><label class="search">${SEARCH_ICON}<input id="q" type="search" placeholder="Search sessions" aria-label="Search sessions"></label></div>
-<div class="table-wrap"><table><thead><tr><th>Session</th><th class="r">Agent time</th><th class="r">Cost</th><th class="r">Tokens</th><th class="r">Turns</th><th>Tests</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+${sectionHtml('projects')}
 <section class="card heat"><h3>Activity</h3><div class="sub">Agent time per day, last 12 weeks</div><svg id="heat" role="img" aria-label="Agent time per day, last 12 weeks"></svg>
 <div class="heroes"><div><div class="hero-label"><i style="color:#5fe08a">✦</i>Active days</div><div class="hero-value num" id="h-active"></div><div class="hero-sub" id="h-active-sub"></div></div>
 <div><div class="hero-label"><i style="color:#ffd166">◆</i>Streak</div><div class="hero-value num" id="h-streak"></div><div class="hero-sub" id="h-streak-sub"></div></div></div><div id="facts"></div></section>
 </div>
+${['context', 'reuse', 'router', 'plans', 'runs', 'extras'].map(sectionHtml).join('\n')}
 <footer>Measured by ponytail's band in Claude Code. Cost is the API-priced cost Claude Code reports (/cost), not a bill. Nothing here is estimated.</footer>
 </main></div>
+<dialog id="export-dialog"><div class="dlg-head"><b>Export all</b><div class="dlg-actions"><button type="button" class="btn" id="export-md">Markdown</button><button type="button" class="btn" id="export-json">JSON</button><button type="button" class="btn" id="export-copy">Copy</button><button type="button" class="btn" id="export-close">Close</button></div></div><div class="dlg-body"><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label></div></dialog>
 <dialog id="share-dialog"><div class="dlg-head"><b>Share card</b><div class="dlg-actions"><button type="button" class="btn" id="save-png">Save PNG</button><button type="button" class="btn" id="save-svg">Save SVG</button><button type="button" class="btn" id="share-close">Close</button></div></div><div class="dlg-body">${CARD}</div></dialog>
-<script type="application/json" id="board-data">${json({ now, tasks })}</script>
+<script type="application/json" id="board-data">${json({ now, tasks, ...extra })}</script>
 <script>${APP}</script></body></html>`
 }

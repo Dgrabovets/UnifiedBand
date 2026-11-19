@@ -24,3 +24,31 @@ export async function logEvent($: EngineInterface, ev: Ev) {
   const old = await $.fs.read(file).catch(() => '')
   await $.fs.write(file, `${old}${JSON.stringify(ev)}\n`)
 }
+
+// What the Board adds to the task ledger: the journal, the router's decisions and the owner's board.json.
+// shortcut: reads whole files; $.fs.read refuses one over 4 MiB, so an oversize router log is left out.
+export async function boardExtra($: EngineInterface) {
+  const dir = await bandDir($)
+  const events: unknown[] = []
+  for (const f of (await $.fs.list(dir).catch(() => [])).filter(x => x.kind === 'file' && /^events-\d{4}-\d{2}\.jsonl$/.test(x.name)).sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const line of (await $.fs.read(`${dir}/${f.name}`).catch(() => '')).split('\n')) {
+      try {
+        if (line !== '') events.push(JSON.parse(line))
+      } catch {}
+    }
+  }
+  const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
+  const claude = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${home}/.claude`
+  const audit = ((await $.fs.read(`${claude}/cache/router/audit.jsonl`).catch(() => '')) as string)
+    .split('\n')
+    .flatMap(line => {
+      try {
+        const r = JSON.parse(line)
+        return [{ ts: Date.parse(r.ts), session: r.session_id, parent: r.decision?.parent, model: r.decision?.model, effort: r.decision?.effort, tier: r.decision?.tier, conf: r.decision?.confidence, outcome: r.outcome, reason: r.decision?.reason }]
+      } catch {
+        return []
+      }
+    })
+  const config = JSON.parse((await $.fs.read(`${dir}/board.json`).catch(() => '{}')) || '{}')
+  return { events, audit, config }
+}

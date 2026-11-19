@@ -125,20 +125,6 @@ export const register: Register = (on, options) => {
       // Not awaited: the command runs a whole turn, and a press handler has ten seconds.
       void run($, 'unified-band:ponytail', level).catch(() => $.ui.toast('Could Not Switch The Level'))
     }
-    const copy = async () => {
-      const lines = [
-        `# ${b.project || 'Session'}`,
-        `- Level: ${cap(b.level)}`,
-        `- Branch: ${l.branch}`,
-        `- Cost: $${b.spent.toFixed(2)}, ${b.turns} turns, ${tokens(b.tokens.input + b.tokens.output)} tokens`,
-        `- Agent Time: ${minutes(b.busyMs)}`,
-        `- Tests: ${tests ? tests.value : 'None'}`,
-        `- Project Completion: ${pct === undefined ? 'N/A' : `${pct}%`}`,
-      ]
-      const done = await $.ui.copy({ text: lines.join('\n'), surface: e.surface })
-      $.ui.toast(done.isCopied ? 'Task Copied As Markdown' : `Copy Failed: ${done.reason}`)
-    }
-
     const { Box, Text, Button } = $.ui.resolve(e)
     const width = e.surface === 'terminal' ? e.props.bodyColumns : undefined
 
@@ -156,7 +142,6 @@ export const register: Register = (on, options) => {
           />
         ))}
         <Box flexGrow={1} />
-        <Button key="copy" plain label="Copy" onPress={copy} />
         <Button key="review" plain label="Review" onPress={() => void run($, 'unified-band:ponytail-review').catch(() => $.ui.toast('Review Failed To Start'))} />
         <Button key="audit" plain label="Audit" onPress={() => void run($, 'unified-band:ponytail-audit').catch(() => $.ui.toast('Audit Failed To Start'))} />
         <Button key="board" plain label="Board" onPress={() => openBoard($).catch(() => $.ui.toast('Could Not Open The Board'))} />
