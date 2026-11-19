@@ -111,6 +111,7 @@ Optional, next to the journal. Rename a project, force its category, merge two f
 
 - Claude Code with mod support (hooks modules).
 - Node.js on PATH (the mode hooks are Node scripts).
+- Optional: the [auto-model-router](https://github.com/IuriiTurok/auto-model-router) plugin, a separate plugin that this mod does not include. The Model Router card and section only read the log it writes, `~/.claude/cache/router/audit.jsonl`. Without it they stay empty.
 
 ## Known limits
 
@@ -131,21 +132,9 @@ node scripts/smoke-board.mjs out.html
 
 The smoke script builds the page from your real ledger plus a synthetic journal (or from synthetic sessions when you have none) and runs its script against a stand-in DOM. It needs Node 22.15 or later. See [CONTRIBUTING.md](CONTRIBUTING.md) before sending a change.
 
-### Regenerating the screenshots and the video
+### The demo pictures
 
-The pictures above come from invented data, so no real project names appear in them. They are made with [Remotion](https://www.remotion.dev) and headless Chrome from the `demo/` folder, which is not part of the plugin:
-
-```
-cd demo
-npm install
-npm run board     # builds the demo Board page from invented data
-npm run shots     # screenshots into docs/images
-npm run render    # the video, docs/demo.mp4
-npm run gif       # the GIF for this README, docs/demo.gif
-npm run social    # the social preview, docs/images/social-preview.png
-```
-
-Chrome or Edge must be installed (set `CHROME_PATH` to use another browser).
+The screenshots, the GIF and the video come from invented data, so no real project names appear in them. `DEMO=1 node scripts/smoke-board.mjs out.html` builds that demo page; the pictures were taken from it with headless Chrome and the video was made with [Remotion](https://www.remotion.dev). The tooling is not part of this repository.
 
 ## Credits
 
