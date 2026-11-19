@@ -25,6 +25,14 @@ const dir = join(homedir(), '.config', 'ponytail', 'band')
 const tasks = readdirSync(dir).filter(f => f.endsWith('.csv')).flatMap(f => tasksFrom(readFileSync(join(dir, f), 'utf8')))
 const now = Date.now()
 const MIN = 60000, DAY = 86400000
+// STREAK=1 adds a session on each of the last ten days, so the streak confetti has something to celebrate.
+if (process.env.STREAK) {
+  for (let d = 0; d < 10; d++) {
+    const t = new Date(now - d * DAY)
+    const p2 = n => String(n).padStart(2, '0')
+    tasks.push({ key: `streak-${d}`, started: `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())} 10:00`, project: 'Steward', name: 'Streak', cost: 1, turns: 5, agentMinutes: 30, tokens: 1000, reuse: null, tests: '', level: 'ultra', model: '' })
+  }
+}
 
 // A synthetic journal over three weeks, three projects, so every section has something to draw.
 const events = [], audit = []
@@ -90,6 +98,7 @@ const document = {
   createElement: tag => make(tag),
   createElementNS: (_, tag) => make(tag),
   createTextNode: () => make('text'),
+  createDocumentFragment: () => make('fragment'),
   querySelectorAll: () => [make('q')],
   querySelector: () => make('q'),
   documentElement: make('html'),

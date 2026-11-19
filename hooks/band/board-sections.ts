@@ -58,7 +58,7 @@ body{background:#fff}footer{display:none}
 .stats2,.stats3,.stats4{display:grid;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .stats2{grid-template-columns:repeat(2,minmax(0,1fr))}.stats3{grid-template-columns:repeat(3,minmax(0,1fr))}.stats4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .stat-l{font-size:12px;color:var(--muted)}.stat-v{font-size:20px;margin:2px 0}.stat-s{font-size:11px;color:var(--faint)}
-.lines{display:block;width:100%;height:150px;overflow:visible}
+.lines{display:block;width:100%;height:150px;overflow:visible}.linebox{position:relative}.linebox-empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--faint);font-size:13px}
 .cols{position:relative;height:100px;margin:6px auto 0;display:flex;align-items:flex-end;justify-content:center;gap:14px;border-bottom:1px solid var(--line);max-width:520px}
 .cols i{width:18px;border-radius:9px;display:block}.cols .thr{position:absolute;left:0;right:0;border-top:1.5px dashed rgba(224,96,90,.55)}
 .leg{display:flex;justify-content:center;gap:16px;margin-top:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.leg span{display:flex;align-items:center;gap:6px}.ldot{width:8px;height:8px;border-radius:50%;display:inline-block}
@@ -148,8 +148,10 @@ function lines(series, o) {
     if (ser.dash) a['stroke-dasharray'] = '6 5'
     svg('path', a, s)
   })
-  if (!series.some(function (ser) { return ser.pts.length >= 2 })) svg('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', 'class': 'empty-chart' }, s).textContent = 'Not enough points yet'
-  return s
+  var box = h('div', 'linebox')
+  box.append(s)
+  if (!series.some(function (ser) { return ser.pts.length >= 2 })) box.append(h('div', 'linebox-empty', 'Not enough points yet'))
+  return box
 }
 // Rounded columns, centred. Plain blocks, not a stretched SVG, so the rounding stays round.
 function columns(vals, o) {
@@ -214,10 +216,13 @@ function drawContext() {
     columns(f.recent.map(function (x) { return x.peak }), { max: 100, thr: 95, color: function (v) { return v >= 95 ? C.red : v >= 70 ? C.amber : C.blue }, title: function (v) { return Math.round(v) + '%' } }),
     legendRow([[C.blue, 'under 70%'], [C.amber, '70 to 94%'], [C.red, '95% or more']]),
     row('stats2', [stat('Average peak', pct(f.avgPeak)), stat('At 95% or more', f.total ? f.hits + ' of ' + f.total : '–'), stat('Burn rate', f.burn == null ? '–' : num1(f.burn) + '%/h'), stat('Time to limit', hrs(f.hoursToLimit), 'at the current pace')]))
+  var live5 = f.windows[f.windows.length - 1]
+  if (live5 && live5.peak >= 90 && live5.reset >= now) five.classList.add('hot')
   var forecast = w.forecast == null ? [] : [{ pts: [w.values[w.values.length - 1], w.forecast], from: w.values.length - 1, color: C.amber, dash: 1 }]
   var weekly = panel('Weekly limit', 'Daily peak, dashed is the forecast to the reset.',
     lines([{ pts: w.values, color: C.amber, fill: 1 }].concat(forecast), { thr: [100], n: w.values.length + (w.forecast == null ? 0 : 1), label: 'Weekly limit' }),
     row('stats2', [stat('Forecast at reset', w.forecast == null ? '–' : pct(w.forecast), w.forecast != null && w.forecast >= 100 ? 'the limit would run out' : ''), stat('Lost to waiting', f.blockedMinutes ? dur(Math.round(f.blockedMinutes)) : '0m', 'after 95% blocks')]))
+  if (w.forecast != null && w.forecast >= 100) weekly.classList.add('hot')
   var blocks = panel('Blocks', 'Windows that reached 95%, latest first')
   var hit = f.windows.filter(function (x) { return x.hit != null }).reverse().slice(0, 5)
   hit.forEach(function (x) { blocks.append(row('li', [tag(Math.round(x.peak) + '%', x.peak >= 100 ? 'bad' : 'warn'), h('span', '', dateOf(x.hit)), h('span', 'sp'), h('span', 'mut', 'blocked ' + dur(Math.round(Math.max(0, (x.reset - x.hit) / 60000))))])) })
@@ -403,6 +408,8 @@ function showPage(id) {
   try { localStorage.setItem('ponytail-board-page', id) } catch (e) {}
   window.scrollTo(0, 0)
   if (id === 'overview') chart()
+  replayRoll(document.querySelector('.page.on'))
+  if (id === 'overview') celebrate()
 }
 // PDF through the browser's print dialog ("Save as PDF"): only the chosen pages, in the light theme, put back afterwards.
 function printIds(ids) {

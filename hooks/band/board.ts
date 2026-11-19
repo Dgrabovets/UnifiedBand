@@ -293,7 +293,6 @@ const APP = `(function () {
       if (p > 0) { var pct = Math.round((v - p) / p * 100); value.append(h('span', 'delta ' + (pct >= 0 ? 'up' : 'down'), (pct >= 0 ? '↑' : '↓') + Math.abs(pct) + '%')) }
       var note = !state.period ? 'all time' : p > 0 ? 'vs previous ' + n + ' days' : 'last ' + n + ' days'
       card.append(h('div', 'kpi-label', M.label), value, h('div', 'kpi-note', note), sparkline(perDay(list, keys, M.pick), i, k))
-      animateNumber(value.firstChild, v, M.fmt)
       wrap.append(card)
     })
   }
@@ -308,7 +307,7 @@ const APP = `(function () {
     var cur = inDays(list, keys).filter(function (t) { return !state.hidden[t.project] })
     byId('chart-sub').textContent = M.label + (state.period ? ', last ' + n + ' days' : ', all time')
     byId('chart-total').textContent = M.fmt(total(cur, M.pick))
-    animateNumber(byId('chart-total').firstChild, total(cur, M.pick), M.fmt)
+    rollNode(byId('chart-total').firstChild)
     legend(shown)
     var x = function (i) { return n > 1 ? i * W / (n - 1) : W / 2 }
     svg('line', { x1: 0, x2: W, y1: base + 22, y2: base + 22, 'class': 'base' }, box)
@@ -330,6 +329,7 @@ const APP = `(function () {
     svg('path', { d: last.top + 'L' + W + ',' + base + 'L0,' + base + 'Z', fill: '#5fe08a', filter: 'url(#sglow)', 'class': 'glow' }, box)
     shapes.forEach(function (s) { svg('path', { d: s.d, fill: s.fill }, box) })
     svg('path', { d: last.top, 'class': 'top-line', 'stroke-width': 1.2 }, box)
+    morphStream(box)
     // One dot per session on the axis, at its hour of the day.
     cur.forEach(function (t) {
       var k = keys.indexOf(t.started.slice(0, 10)), hour = (+t.started.slice(11, 13) || 12) / 24
@@ -400,7 +400,7 @@ const APP = `(function () {
     for (var j = vals[83] > 0 ? 83 : 82; j >= 0 && vals[j] > 0; j--) streak++
     byId('h-active').textContent = String(active)
     var share = byId('h-active-sub'); share.textContent = ''; share.append(h('b', '', Math.round(active / 84 * 100) + '%'), document.createTextNode('of the last 84 days'))
-    byId('h-streak').textContent = plural(streak, 'day')
+    byId('h-streak').textContent = plural(streak, 'day'); lastStreak = streak
     byId('h-streak-sub').textContent = 'longest ' + plural(longest, 'day')
     var cur = inDays(list, days(span())), byDay = {}, best = null
     cur.forEach(function (t) { var k = t.started.slice(0, 10); byDay[k] = (byDay[k] || 0) + t.agentMinutes; if (!best || t.agentMinutes > best.agentMinutes) best = t })
@@ -441,7 +441,7 @@ const APP = `(function () {
   ${SECTIONS_JS}
   ${MOTION_JS}
 
-  function render() { header(); kpis(); chart(); heat(); card(); renderSections(); stagger() }
+  function render() { header(); kpis(); chart(); heat(); card(); renderSections(); stagger(); rollAll() }
 
   function download(blob, name) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click() }
   // The saved card carries its own copy of the logo, so it stands alone.
@@ -457,13 +457,13 @@ const APP = `(function () {
   }
 
   document.querySelectorAll('[data-metric]').forEach(function (b) {
-    b.addEventListener('click', function () { state.metric = b.getAttribute('data-metric'); document.querySelectorAll('[data-metric]').forEach(function (x) { x.classList.toggle('on', x === b) }); chart() })
+    b.addEventListener('click', function () { state.metric = b.getAttribute('data-metric'); morphNext = true; document.querySelectorAll('[data-metric]').forEach(function (x) { x.classList.toggle('on', x === b) }); chart() })
   })
   document.querySelectorAll('[data-period]').forEach(function (b) {
     b.addEventListener('click', function () { state.period = +b.getAttribute('data-period'); document.querySelectorAll('[data-period]').forEach(function (x) { x.classList.toggle('on', x === b) }); render() })
   })
   var resizing; window.addEventListener('resize', function () { clearTimeout(resizing); resizing = setTimeout(chart, 120) })
-  byId('share').addEventListener('click', function () { byId('share-dialog').showModal() })
+  byId('share').addEventListener('click', function () { byId('share-dialog').showModal(); assembleCard() })
   byId('share-close').addEventListener('click', function () { byId('share-dialog').close() })
   byId('save-png').addEventListener('click', savePng)
   byId('save-svg').addEventListener('click', saveSvg)
@@ -526,10 +526,10 @@ export type BoardExtra = { events: unknown[]; audit: unknown[]; config: unknown 
 export function boardHtml(tasks: Task[], now: number, extra: BoardExtra = { events: [], audit: [], config: {} }): string {
   const seg = (attr: string, items: [string, string][], on: string) =>
     items.map(([value, label]) => `<button type="button" data-${attr}="${value}"${value === on ? ' class="on"' : ''}>${label}</button>`).join('')
-  return `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ponytail board</title><link rel="icon" href="${FAVICON}"><style>${CSS}${SECTIONS_CSS}${MOTION_CSS}</style></head>
+  return `<!doctype html><html lang="en" data-theme="dark" data-motion="rich"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ponytail board</title><link rel="icon" href="${FAVICON}"><style>${CSS}${SECTIONS_CSS}${MOTION_CSS}</style></head>
 <body><svg class="sprite" aria-hidden="true" focusable="false"><symbol id="pt-logo" viewBox="${LOGO_VIEWBOX}"><g fill="#1d1c1a">${LOGO_PATHS}</g></symbol></svg>
 <div class="app">
-<aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>ponytail</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span><button type="button" class="motion" id="motion">Motion: Rich</button>${THEME_BUTTON}</div></aside>
+<aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>ponytail</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
 <main>
 <div class="top"><div><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
 <div class="actions"><div class="picker"><button type="button" class="btn" id="picker" aria-haspopup="menu">All projects ▾</button></div><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="grp" role="group" aria-label="Export"><button type="button" id="copy-summary">Copy summary</button><button type="button" id="export-all">Export all</button><button type="button" id="export-raw">Raw data</button><button type="button" id="share">Share card</button></div></div></div>
