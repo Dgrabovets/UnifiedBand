@@ -204,6 +204,7 @@ Always on, one rich level; the system "reduce motion" setting turns everything o
 - [x] The Share card no longer goes empty when every project is hidden in the table
 - [x] A click anywhere on a project row shows or hides it
 - [x] The Share card strip is two panels, cost and tokens per day, one rounded bar per day, each with its maximum and the date ends
+- [x] Export dialog is split: sections and options on the left, format cards and one Download button on the right
 
 ## Decisions
 

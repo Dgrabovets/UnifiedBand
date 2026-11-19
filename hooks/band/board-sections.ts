@@ -81,7 +81,16 @@ body{background:#fff}footer{display:none}
 .prow.head{border-top:0;color:var(--faint);font-size:12px;padding:2px 8px 6px}.prow .r{text-align:right}.prow.dim{opacity:.4}
 .psw{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--c);background:var(--c);padding:0;cursor:pointer}.psw[aria-pressed=false]{background:transparent}
 .plink{border:0;background:transparent;color:var(--text);font:inherit;text-align:left;padding:0;cursor:pointer}.plink:hover{text-decoration:underline}.plink.dimmed{color:var(--muted);text-align:right}
-.fc{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer}.fc.on{background:var(--text);color:var(--bg);border-color:transparent}.fl{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}.xhead{display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px;padding-bottom:10px}.xhead .li{padding:0;border:0}.xopt{margin-top:18px;padding-top:16px;border-top:1px solid var(--line2)}
+.fc{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer}.fc.on{background:var(--text);color:var(--bg);border-color:transparent}.fl{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}.xhead{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px;min-height:24px}.xhead .li{padding:0;border:0}.xopt{margin-top:18px;padding-top:16px;border-top:1px solid var(--line2)}
+.xsplit{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px}
+.xsplit #export-list{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.xsplit .li{border:0;padding:6px 0}
+.xfmt{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.xcard{display:block;position:relative;border:1px solid var(--line2);border-radius:12px;padding:10px 12px;cursor:pointer;font-size:13px;transition:border-color .15s var(--ease),background .15s var(--ease)}
+.xcard input{position:absolute;opacity:0;inset:0;margin:0;width:100%;height:100%;cursor:pointer}
+.xcard i{display:block;font-style:normal;color:var(--muted);font-size:12px;margin-top:2px}
+.xcard:hover{background:var(--track)}.xcard:has(input:checked){border-color:var(--text);background:var(--track)}.xcard:has(input:focus-visible){outline:2px solid var(--text);outline-offset:2px}
+.xgo{width:100%}
+@media (max-width:700px){.xsplit{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:860px){.prow{grid-template-columns:24px minmax(0,1fr) 76px 80px 64px}.prow>:nth-child(3),.prow>:nth-child(6){display:none}}
 .hm{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:3px;margin-top:6px}.hm i{aspect-ratio:1;border-radius:4px;display:block;background:var(--empty)}
 .cat-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line2)}
@@ -515,7 +524,6 @@ function wireExport() {
   var shareMenu = byId('share-menu')
   byId('share-menu-btn').addEventListener('click', function (ev) { ev.stopPropagation(); var open = shareMenu.hidden; closeMenus(); shareMenu.hidden = !open })
   shareMenu.addEventListener('click', function () { setTimeout(closeMenus, 900) })
-  byId('export-raw-dlg').addEventListener('click', saveRaw)
   var saved = 'overview'
   try { saved = localStorage.getItem('ponytail-board-page') || 'overview' } catch (e) {}
   showPage(document.querySelector('.page[data-page="' + saved + '"]') ? saved : 'overview')
@@ -532,7 +540,9 @@ function wireExport() {
   syncAllBox()
   byId('export-all').addEventListener('click', function () { dlg.showModal() })
   byId('export-close').addEventListener('click', function () { dlg.close() })
-  byId('export-pdf').addEventListener('click', function () { dlg.close(); printIds(chosen()) })
-  byId('export-md').addEventListener('click', function () { saveText(allMd(chosen(), byId('hide-names').checked), SLUG + '-board.md', 'text/markdown') })
+  byId('export-go').addEventListener('click', function () {
+    var fmt = dlg.querySelector('input[name=xfmt]:checked').value
+    if (fmt === 'pdf') { dlg.close(); printIds(chosen()) } else if (fmt === 'md') saveText(allMd(chosen(), byId('hide-names').checked), SLUG + '-board.md', 'text/markdown'); else saveRaw()
+  })
 }
 `

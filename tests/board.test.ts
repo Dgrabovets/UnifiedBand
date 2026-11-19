@@ -21,7 +21,7 @@ test('the page has every section, the grouped buttons, the export dialog and no 
   expect(html.includes('id="export-json"')).toBe(false)
   for (const id of ['copy-summary', 'export-all', 'share', 'export-dialog']) expect(html.includes(`id="${id}"`)).toBe(true)
   for (const id of ['overview', 'context', 'reuse', 'router', 'plans', 'runs', 'extras']) expect(html.includes(`data-page="${id}"`)).toBe(true)
-  for (const id of ['export-pdf', 'picker', 'export-raw-dlg', 'share-menu', 'with-titles', 'export-all-sections']) expect(html.includes(`id="${id}"`)).toBe(true)
+  for (const id of ['export-go', 'picker', 'share-menu', 'with-titles', 'export-all-sections']) expect(html.includes(`id="${id}"`)).toBe(true)
   expect(html.includes('@keyframes bd-rise')).toBe(true)
   for (const name of ['bd-hot', 'bd-confetti', 'bd-reveal', '#card.assemble']) expect(html.includes(name)).toBe(true)
   expect(html.includes('data-motion="rich"')).toBe(true)
