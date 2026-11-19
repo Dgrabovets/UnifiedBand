@@ -76,8 +76,8 @@ body{background:#fff}footer{display:none}
 .tag{font-size:11px;padding:2px 9px;border-radius:999px;white-space:nowrap;background:var(--nonebg);color:var(--muted)}.tag.ok{background:var(--okbg);color:var(--ok)}.tag.warn{background:var(--warnbg);color:var(--warn)}.tag.bad{background:var(--badbg);color:var(--bad)}
 .li{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}.li .sp{flex:1}.li .mut{color:var(--faint);font-size:12px}
 .ptable-note{margin-bottom:2px}
-.prow{display:grid;grid-template-columns:24px minmax(0,1.4fr) 84px 76px 84px minmax(0,1.3fr);gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line);transition:opacity .2s}
-.prow.head{border-top:0;color:var(--faint);font-size:12px;padding:2px 0 6px}.prow .r{text-align:right}.prow.dim{opacity:.4}
+.prow:not(.head){cursor:pointer}.prow:not(.head):hover{background:var(--track)}.prow{display:grid;grid-template-columns:24px minmax(0,1.4fr) 84px 76px 84px minmax(0,1.3fr);gap:12px;align-items:center;padding:9px 8px;margin:0 -8px;border-radius:8px;border-top:1px solid var(--line);transition:opacity .2s}
+.prow.head{border-top:0;color:var(--faint);font-size:12px;padding:2px 8px 6px}.prow .r{text-align:right}.prow.dim{opacity:.4}
 .psw{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--c);background:var(--c);padding:0;cursor:pointer}.psw[aria-pressed=false]{background:transparent}
 .plink{border:0;background:transparent;color:var(--text);font:inherit;text-align:left;padding:0;cursor:pointer}.plink:hover{text-decoration:underline}.plink.dimmed{color:var(--muted);text-align:right}
 .fc{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer}.fc.on{background:var(--text);color:var(--bg);border-color:transparent}.fl{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}.xhead{display:flex;justify-content:space-between;align-items:center;margin:4px 0 2px}.xhead .li{padding:0;border:0}.xopt{margin-top:18px;padding-top:16px;border-top:1px solid var(--line2)}
@@ -214,7 +214,8 @@ function drawProjects() {
   shown.forEach(function (p) {
     var large = p.category === 'Large' && !isChats(p), tr = h('div', 'prow' + (state.hidden[p.name] ? ' dim' : ''))
     var sw = h('button', 'psw'); sw.type = 'button'; sw.style.setProperty('--c', colorOf(p.name)); sw.setAttribute('aria-pressed', String(!state.hidden[p.name])); sw.setAttribute('aria-label', 'Show ' + labelOf(p.name) + ' in the chart')
-    sw.addEventListener('click', function () { state.hidden[p.name] = !state.hidden[p.name]; sw.setAttribute('aria-pressed', String(!state.hidden[p.name])); tr.classList.toggle('dim', !!state.hidden[p.name]); syncAll(); chart(); card() })
+    // The whole row toggles the project; the swatch button inside it is the keyboard target, and a Large project's name still opens its page.
+    tr.addEventListener('click', function (ev) { if (ev.target.closest && ev.target.closest('.plink')) return; state.hidden[p.name] = !state.hidden[p.name]; sw.setAttribute('aria-pressed', String(!state.hidden[p.name])); tr.classList.toggle('dim', !!state.hidden[p.name]); syncAll(); chart(); card() })
     function open() { state.project = p.name; state.hidden = {}; render(); showPage('overview') }
     var name
     if (large) { name = h('button', 'plink', labelOf(p.name)); name.type = 'button'; name.addEventListener('click', open) } else { name = h('span', '', isChats(p) ? 'Chats' : labelOf(p.name)) }

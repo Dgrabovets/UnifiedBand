@@ -412,18 +412,15 @@ const APP = `(function () {
     var real = projects.filter(function (p) { return p !== 'Chats' })
     byId('c-sub').textContent = plural(real.length, 'project') + (projects.length > real.length ? ' and chats' : '') + ' · ' + money(total(cur, METRICS.cost.pick)) + ' · ' + time(total(cur, METRICS.time.pick)) + ' of agent time'
     cardTiles(list, cur)
-    var g = byId('c-stream'), W = 1200, base = 600, topY = 500; g.textContent = ''
-    var layers = projects.map(function (p) { return perDay(cur.filter(function (t) { return t.project === p }), keys, METRICS.time.pick) })
-    var totals = keys.map(function (_, i) { return layers.reduce(function (a, r) { return a + r[i] }, 0) }), max = Math.max.apply(null, totals.concat([0]))
+    // One bar per day of the period: plain rounded bars draw the same way for 7 days or for a year.
+    var g = byId('c-stream'), W = 1056, left = 72, base = 590, topY = 468; g.textContent = ''
+    var vals = perDay(cur, keys, METRICS.time.pick), max = Math.max.apply(null, vals.concat([0]))
     if (max <= 0) return
-    var x = function (i) { return n > 1 ? i * W / (n - 1) : W / 2 }, y = function (v) { return base - v / max * (base - topY) }, acc = keys.map(function () { return 0 }), shapes = []
-    layers.forEach(function (r, li) {
-      var lower = acc, upper = acc.map(function (a, i) { return a + r[i] }); acc = upper
-      var up = smooth(upper.map(function (v, i) { return [x(i), y(v)] })), low = smooth(lower.map(function (v, i) { return [x(i), y(v)] }).reverse())
-      shapes.push({ d: up + 'L' + low.slice(1) + 'Z', fill: 'url(#cf' + PALETTE.indexOf(colorOf(projects[li])) + ')', top: up })
+    var step = W / n, bw = Math.max(1.5, step * (n > 60 ? .8 : .7))
+    vals.forEach(function (v, i) {
+      var h = v > 0 ? Math.max(4, v / max * (base - topY)) : 2
+      svg('rect', { x: (left + i * step + (step - bw) / 2).toFixed(1), y: (base - h).toFixed(1), width: bw.toFixed(1), height: h.toFixed(1), rx: Math.min(bw / 2, 5), fill: v > 0 ? '#5fe08a' : '#242422', opacity: v > 0 ? .45 + .55 * v / max : 1 }, g)
     })
-    svg('path', { d: shapes[shapes.length - 1].top + 'L' + W + ',' + base + 'L0,' + base + 'Z', fill: '#5fe08a', opacity: .18, filter: 'url(#cglow)' }, g)
-    shapes.forEach(function (s) { svg('path', { d: s.d, fill: s.fill }, g) })
   }
 
   ${STATS_SRC}
@@ -485,7 +482,7 @@ const MONO = "'JetBrains Mono', ui-monospace, Menlo, monospace"
 const tile = (x: number, y: number, label: string, id: string) =>
   `<text x="${x}" y="${y}" font-size="17" fill="#8d8b84">${label}</text><text id="${id}" x="${x}" y="${y + 36}" font-family="${MONO}" font-size="27" fill="#f3f2ee"></text>`
 const cardSvg = (name: string) => `<svg id="card" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" font-family="${SANS}">
-<defs>${PALETTE.map((c, i) => `<linearGradient id="cf${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".95"/><stop offset="1" stop-color="${c}" stop-opacity=".55"/></linearGradient>`).join('')}<filter id="cglow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="12"/></filter><radialGradient id="chalo" cx=".62" cy=".8" r=".6"><stop offset="0" stop-color="#5fe08a" stop-opacity=".16"/><stop offset="1" stop-color="#5fe08a" stop-opacity="0"/></radialGradient></defs>
+<defs><radialGradient id="chalo" cx=".62" cy=".8" r=".6"><stop offset="0" stop-color="#5fe08a" stop-opacity=".16"/><stop offset="1" stop-color="#5fe08a" stop-opacity="0"/></radialGradient></defs>
 <rect width="1200" height="630" fill="#070707"/><rect width="1200" height="630" fill="url(#chalo)"/>
 <g id="c-stream"></g><rect y="600" width="1200" height="30" fill="#070707"/>
 <use href="#pt-logo" x="72" y="62" width="48" height="55" color="#f3f2ee"/>

@@ -202,6 +202,8 @@ Always on, one rich level; the system "reduce motion" setting turns everything o
 - [x] A custom checkbox in the Board's own style, with a mixed state
 - [x] Raw data follows the ticked sections; "All" checkbox; Options set apart from Sections
 - [x] The Share card no longer goes empty when every project is hidden in the table
+- [x] A click anywhere on a project row shows or hides it
+- [x] The Share card strip is one rounded bar per day instead of the smoothed stream
 
 ## Decisions
 
