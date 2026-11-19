@@ -22,9 +22,18 @@ registerHooks({
 const { boardHtml, tasksFrom } = await import('../hooks/band/board.ts')
 
 const dir = join(homedir(), '.config', 'ponytail', 'band')
-const tasks = readdirSync(dir).filter(f => f.endsWith('.csv')).flatMap(f => tasksFrom(readFileSync(join(dir, f), 'utf8')))
+let tasks = []
+try {
+  tasks = readdirSync(dir).filter(f => f.endsWith('.csv')).flatMap(f => tasksFrom(readFileSync(join(dir, f), 'utf8')))
+} catch {}
 const now = Date.now()
 const MIN = 60000, DAY = 86400000
+// A machine with no ledger (a CI runner): a few synthetic sessions, so the page has something to draw.
+if (tasks.length === 0) {
+  const p2 = n => String(n).padStart(2, '0')
+  const at = d => { const t = new Date(now - d * DAY); return `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())} 10:00` }
+  tasks = ['Steward', 'SipAndTell', 'Notes'].flatMap((project, i) => [1, 3, 8, 15].map(d => ({ key: `${project}-${d}`, started: at(d + i), project, name: 'Synthetic', cost: 2 + i, turns: 12, agentMinutes: 25, tokens: 40000, reuse: 40, tests: 'passed', level: 'full', model: 'claude-sonnet-5-5' })))
+}
 // STREAK=1 adds a session on each of the last ten days, so the streak confetti has something to celebrate.
 if (process.env.STREAK) {
   for (let d = 0; d < 10; d++) {
@@ -68,7 +77,7 @@ projects.forEach((project, pi) => {
 // REAL=1 swaps the synthetic journal for the real one: what the mod's boardExtra reads.
 let extra = { events, audit, config: { projects: { SipAndTell: { label: 'Sip & Tell' } } } }
 if (process.env.REAL) {
-  const realEvents = readdirSync(dir).filter(f => /^events-\d{4}-\d{2}\.jsonl$/.test(f)).sort().flatMap(f => readFileSync(join(dir, f), 'utf8').split('\n').flatMap(l => { try { return l ? [JSON.parse(l)] : [] } catch { return [] } }))
+  const realEvents = readdirSync(dir).filter(f => /^events-\d{4}-\d{2}(-\d{2}-[\w-]+)?\.jsonl$/.test(f)).sort().flatMap(f => readFileSync(join(dir, f), 'utf8').split('\n').flatMap(l => { try { return l ? [JSON.parse(l)] : [] } catch { return [] } }))
   let realAudit = []
   try {
     realAudit = readFileSync(join(homedir(), '.claude', 'cache', 'router', 'audit.jsonl'), 'utf8').split('\n').flatMap(l => { try { const r = JSON.parse(l); return [{ ts: Date.parse(r.ts), session: r.session_id, parent: r.decision?.parent, model: r.decision?.model, effort: r.decision?.effort, tier: r.decision?.tier, conf: r.decision?.confidence, outcome: r.outcome, reason: r.decision?.reason }] } catch { return [] } })
