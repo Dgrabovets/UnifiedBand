@@ -209,7 +209,7 @@ Always on, one rich level; the system "reduce motion" setting turns everything o
 
 - [x] The smoke script has a DEMO mode with invented data (neutral project names, a few chats)
 - [x] Screenshots of every Board section, made with headless Chrome from `demo/capture.mjs`
-- [x] A Remotion video and a GIF of the Board, and a social preview picture
+- [x] A Remotion video built from a recording of the real Board (camera, callouts, an intro where the pile of add-ons collapses into one), a GIF of its first half minute, and a social preview picture
 - [x] README rewritten around the pictures, with a quick start, data locations and how to regenerate the media
 
 ## Decisions
