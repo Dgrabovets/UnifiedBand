@@ -100,4 +100,10 @@ End with:
 Nothing found: `What this repo does:`, then `Healthy. Nothing to fix.` and
 one line on what you checked.
 
+Last line of the report, on its own and exactly in this shape (a program reads it, so do not translate or change it):
+
+`PONYTAIL_RESULT kind=audit findings=<N> high=<M>`
+
+N is the number of findings, M how many are in the first group (must fix). Nothing found: `findings=0 high=0`.
+
 One-shot report, changes no code.
