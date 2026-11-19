@@ -199,7 +199,7 @@ const APP = `(function () {
   function groupName(n) { var al = (D.config && D.config.aliases) || {}, more = (D.config && D.config.chats) || []; if (al[n]) n = al[n]; return CHAT_RE.test(n) || more.indexOf(n) >= 0 ? 'Chats' : n }
   tasks.forEach(function (x) { x.project = groupName(x.project) })
   ;(D.events || []).forEach(function (e) { e.project = groupName(e.project) })
-  var state = { project: '', metric: 'time', q: '', period: 30, hidden: {} }
+  var state = { project: '', cat: '', metric: 'time', q: '', period: 30, hidden: {} }
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   var PALETTE = ${JSON.stringify(PALETTE)}
   // Each KPI its own colour pair, apart from the project colours: the line runs from one to the other.
@@ -308,7 +308,6 @@ const APP = `(function () {
     byId('chart-sub').textContent = M.label + (state.period ? ', last ' + n + ' days' : ', all time')
     byId('chart-total').textContent = M.fmt(total(cur, M.pick))
     rollNode(byId('chart-total').firstChild)
-    legend(shown)
     var x = function (i) { return n > 1 ? i * W / (n - 1) : W / 2 }
     svg('line', { x1: 0, x2: W, y1: base + 22, y2: base + 22, 'class': 'base' }, box)
     for (var w = 0, step = Math.max(1, Math.ceil(n / 6)); w < n; w += step) svg('text', { x: x(w), y: H - 6, 'class': 'axis', 'text-anchor': w ? 'middle' : 'start' }, box).textContent = shortDate(keys[w])
@@ -343,17 +342,6 @@ const APP = `(function () {
       tip.style.left = x(i) / W * r.width + 'px'; tip.style.top = y(totals[i]) / H * r.height + 'px'; tip.hidden = false
     }
     box.onmouseleave = function () { hover.setAttribute('visibility', 'hidden'); tip.hidden = true }
-  }
-
-  function legend(shown) {
-    var box = byId('legend'); box.textContent = ''
-    if (shown.length < 2) return
-    shown.forEach(function (p) {
-      var b = h('button', 'chip'), d = h('span', 'dot'); b.type = 'button'; b.setAttribute('aria-pressed', String(!state.hidden[p])); d.style.setProperty('--c', colorOf(p))
-      b.append(d, document.createTextNode(p), h('span', 'x', state.hidden[p] ? '+' : '×'))
-      b.addEventListener('click', function () { state.hidden[p] = !state.hidden[p]; chart(); card() })
-      box.append(b)
-    })
   }
 
   // Thermal ramp: a quiet indigo for a little agent time, through red to yellow for the most.
@@ -537,7 +525,7 @@ export function boardHtml(tasks: Task[], now: number, extra: BoardExtra = { even
 <section class="kpis" id="kpis"></section>
 <section class="card chart-card"><div class="chart-head"><div><div class="label" id="chart-sub"></div><div class="big num" id="chart-total"></div></div>
 <div class="seg" role="group" aria-label="Metric">${seg('metric', [['time', 'Agent time'], ['cost', 'Cost'], ['tokens', 'Tokens']], 'time')}</div></div>
-<div class="chart-wrap"><svg id="stream" role="img" aria-label="Per project and day"></svg><div class="tip" id="tip" hidden></div></div><div class="legend" id="legend"></div></section>
+<div class="chart-wrap"><svg id="stream" role="img" aria-label="Per project and day"></svg><div class="tip" id="tip" hidden></div></div></section>
 ${sectionHtml('projects')}
 <section class="card heat"><div class="heat-head"><h3>Activity</h3><div class="sub">Agent time per day, last 12 weeks</div></div><div class="heat-body"><div class="heat-map"><svg id="heat" role="img" aria-label="Agent time per day, last 12 weeks"></svg></div><div class="heat-side">
 <div class="heroes"><div><div class="hero-label"><i style="color:#5fe08a">✦</i>Active days</div><div class="hero-value num" id="h-active"></div><div class="hero-sub" id="h-active-sub"></div></div>

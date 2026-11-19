@@ -76,6 +76,13 @@ body{background:#fff}footer{display:none}
 .li{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}.li .sp{flex:1}.li .mut{color:var(--faint);font-size:12px}
 .pcat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
 .tile{border:1px solid var(--line);border-radius:14px;padding:10px 12px}.tile b{display:block;font:500 22px ${'"JetBrains Mono",ui-monospace,monospace'}}.tile span{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+.ptable-note{margin-bottom:2px}
+.prow{display:grid;grid-template-columns:24px minmax(0,1.4fr) 84px 76px 84px minmax(0,1.3fr) 72px;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line);transition:opacity .2s}
+.prow.head{border-top:0;color:var(--faint);font-size:12px;padding:2px 0 6px}.prow .r{text-align:right}.prow.dim{opacity:.4}
+.psw{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--c);background:var(--c);padding:0;cursor:pointer}.psw[aria-pressed=false]{background:transparent}
+.plink{border:0;background:transparent;color:var(--text);font:inherit;text-align:left;padding:0;cursor:pointer}.plink:hover{text-decoration:underline}.plink.dimmed{color:var(--muted);text-align:right}
+.fc{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer}.fc.on{background:var(--text);color:var(--bg);border-color:transparent}
+@media (max-width:860px){.prow{grid-template-columns:24px minmax(0,1fr) 76px 80px 64px}.prow>:nth-child(3),.prow>:nth-child(6){display:none}}
 .proj{display:grid;grid-template-columns:150px minmax(0,1fr) 70px 16px;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line);cursor:pointer;background:transparent;border-left:0;border-right:0;border-bottom:0;width:100%;color:var(--text);font:inherit;text-align:left}.proj:hover{background:var(--track)}
 .hm{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:3px;margin-top:6px}.hm i{aspect-ratio:1;border-radius:4px;display:block;background:var(--empty)}
 .cat-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line2)}
@@ -175,32 +182,40 @@ function drawOverviewExport() {
 }
 function drawProjects() {
   var b = byId('b-projects'); b.textContent = ''
-  var all = categorize(scopeTasks(), EV, CFG), cats = all.filter(function (p) { return p.name !== 'Chats' }), chats = all.filter(function (p) { return p.name === 'Chats' })[0]
+  var all = categorize(scopeTasks(), EV, CFG)
   if (state.project) {
-    var me = cats.filter(function (p) { return p.name === state.project })[0], back = h('button', 'btn sm', '← All projects'); back.type = 'button'
+    // One project chosen: nothing left to compare, so the block is a single line.
+    var me = all.filter(function (p) { return p.name === state.project })[0], back = h('button', 'btn sm', '← All projects'); back.type = 'button'
     back.addEventListener('click', function () { state.project = ''; state.hidden = {}; render() })
     var chip = h('span', 'cat-chip', me ? me.category : 'No sessions in this period'), dot = h('i', 'ldot'); dot.style.background = me ? (CATS.filter(function (c) { return c[0] === me.category })[0] || ['', C.blue])[1] : C.blue; chip.prepend(dot)
-    b.append(row('li', [back, chip, h('span', 'sp'), h('span', 'mut', me ? plural(me.sessions, 'session') + ' · ' + plural(me.days, 'day') + ' · ' + money(me.cost) : '')]))
+    var pl = planStats(scopeEv(), [state.project], now).plans[state.project]
+    b.append(row('li', [back, chip, h('span', 'sp'), h('span', 'mut', me ? plural(me.sessions, 'session') + ' · ' + plural(me.days, 'day') + ' · ' + money(me.cost) + (pl ? ' · plan ' + pl.done + ' of ' + pl.total : '') : '')]))
     setExport('projects', 'Project', ['Metric', 'Value'], me ? [['Name', labelOf(me.name)], ['Category', me.category], ['Sessions', String(me.sessions)], ['Turns', String(me.turns)], ['Cost', money(me.cost)], ['Days', String(me.days)], ['Plan', me.plan ? 'yes' : 'no']] : [])
     return
   }
-  if (!cats.length && !chats) return emptyBody('projects', 'Projects', 'No sessions in this period.')
-  var tiles = h('div', 'pcat'), spend = total(cats, function (p) { return p.cost }) || 1
-  CATS.forEach(function (c) {
-    var t = h('div', 'tile'), l = h('span'), dot = h('i', 'ldot'); dot.style.background = c[1]; l.append(dot, document.createTextNode(c[0]))
-    var isChat = c[0] === 'Chat'
-    if (isChat) l.lastChild.textContent = 'Chats, sessions'
-    t.append(l, h('b', '', isChat ? String(chats ? chats.sessions : 0) : String(cats.filter(function (p) { return p.category === c[0] }).length))); tiles.append(t)
+  if (!all.length) return emptyBody('projects', 'Projects', 'No sessions in this period.')
+  var isChats = function (p) { return p.name === 'Chats' }
+  var count = function (c) { return all.filter(function (p) { return c === 'Chat' ? isChats(p) : p.category === c && !isChats(p) }).length }
+  var chats = all.filter(isChats)[0]
+  b.append(h('div', 'stat-s', plural(all.filter(function (p) { return !isChats(p) }).length, 'project') + ' worked on. A swatch shows or hides a project in the chart; Large projects open their own page.'))
+  var fl = h('div', 'fl')
+  ;[['', 'All ' + all.length], ['Large', 'Large ' + count('Large')], ['Medium', 'Medium ' + count('Medium')], ['Small', 'Small ' + count('Small')], ['Chat', 'Chats ' + (chats ? plural(chats.sessions, 'session') : 0)]].forEach(function (f) {
+    var c = h('button', 'fc' + (state.cat === f[0] ? ' on' : ''), f[1]); c.type = 'button'; c.setAttribute('aria-pressed', String(state.cat === f[0]))
+    c.addEventListener('click', function () { state.cat = f[0]; drawProjects() }); fl.append(c)
   })
-  b.append(h('div', 'stat-l', plural(cats.length, 'project') + ' worked on'), tiles, h('div', 'stat-s', 'Large projects, share of cost. Click one for its own page.'))
-  cats.filter(function (p) { return p.category === 'Large' }).forEach(function (p) {
-    var r = h('button', 'proj'), t = h('div', 'hbar'), i = h('i'); r.type = 'button'
-    i.style.width = Math.max(2, p.cost / spend * 100) + '%'; i.style.background = C.red; t.append(i)
-    r.append(h('span', '', labelOf(p.name)), t, h('span', 'num', money(p.cost)), h('span', 'mut', '›'))
-    r.addEventListener('click', function () { state.project = p.name; state.hidden = {}; render(); showPage('overview') })
-    b.append(r)
+  b.append(fl, row('prow head', [h('span'), h('span', '', 'Project'), h('span', '', 'Category'), h('span', 'r', 'Sessions'), h('span', 'r', 'Cost'), h('span', '', 'Share'), h('span')]))
+  var spend = total(all, function (p) { return p.cost }) || 1
+  all.filter(function (p) { return !state.cat || (state.cat === 'Chat' ? isChats(p) : p.category === state.cat && !isChats(p)) }).forEach(function (p) {
+    var large = p.category === 'Large' && !isChats(p), tr = h('div', 'prow' + (state.hidden[p.name] ? ' dim' : ''))
+    var sw = h('button', 'psw'); sw.type = 'button'; sw.style.setProperty('--c', colorOf(p.name)); sw.setAttribute('aria-pressed', String(!state.hidden[p.name])); sw.setAttribute('aria-label', 'Show ' + labelOf(p.name) + ' in the chart')
+    sw.addEventListener('click', function () { state.hidden[p.name] = !state.hidden[p.name]; sw.setAttribute('aria-pressed', String(!state.hidden[p.name])); tr.classList.toggle('dim', !!state.hidden[p.name]); chart(); card() })
+    function open() { state.project = p.name; state.hidden = {}; render(); showPage('overview') }
+    var name, openCell
+    if (large) { name = h('button', 'plink', labelOf(p.name)); name.type = 'button'; name.addEventListener('click', open); openCell = h('button', 'plink dimmed', 'Open ›'); openCell.type = 'button'; openCell.addEventListener('click', open) } else { name = h('span', '', isChats(p) ? 'Chats' : labelOf(p.name)); openCell = h('span') }
+    var bar = h('div', 'hbar'), i = h('i'); i.style.width = Math.max(2, p.cost / spend * 100) + '%'; i.style.background = colorOf(p.name); bar.append(i)
+    tr.append(sw, name, tag(isChats(p) ? 'Chat' : p.category), h('span', 'r num', String(p.sessions)), h('span', 'r num', money(p.cost)), bar, openCell)
+    b.append(tr)
   })
-  if (!cats.some(function (p) { return p.category === 'Large' })) b.append(h('div', 'empty-sec', 'No large project in this period.'))
   setExport('projects', 'Projects', ['Project', 'Category', 'Sessions', 'Turns', 'Cost', 'Days', 'Plan'], all.map(function (p) { return [labelOf(p.name), p.category, String(p.sessions), String(p.turns), money(p.cost), String(p.days), p.plan ? 'yes' : 'no'] }))
 }
 
