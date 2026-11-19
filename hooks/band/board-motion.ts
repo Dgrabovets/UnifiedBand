@@ -1,7 +1,8 @@
-// Motion for the Board, in plain CSS and a few lines of script. Three levels, switched in the sidebar and remembered:
-// Off (nothing moves), Subtle (short fades, bars and lines that draw in, menus that pop) and Rich (adds staggered entrances,
-// counting numbers, a honeycomb that pops in and glows, a sliding nav mark, hover lifts). Only transform and opacity move,
-// apart from the clip-path of a line chart that draws in. The system setting "reduce motion" always wins.
+// Motion for the Board, in plain CSS and a few lines of script. It is always on, at one rich level;
+// the system setting "reduce motion" turns all of it off.
+// Only transform and opacity move, apart from the clip-path of a chart that draws in and the shape of the main chart
+// morphing between metrics. Entrance animations use fill-mode "backwards": once one ends the element is plain again,
+// not held on a compositing layer, which is what made text look soft.
 // No backticks, template placeholders or backslashes inside the script text: it sits in a template literal.
 
 export const MOTION_CSS = `
@@ -13,68 +14,149 @@ export const MOTION_CSS = `
 @keyframes bd-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes bd-reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 @keyframes bd-glow{0%,100%{opacity:.25}50%{opacity:.75}}
+@keyframes bd-hot{0%,100%{opacity:.12}50%{opacity:.95}}
+@keyframes bd-confetti{0%{opacity:1;transform:translate(0,0) rotate(0)}65%{opacity:1}100%{opacity:0;transform:translate(var(--dx),calc(var(--dy) + 90px)) rotate(var(--rot))}}
 
-/* Subtle and Rich */
-html:not([data-motion="off"]) .page.on{animation:bd-fade .24s var(--ease) both}
-html:not([data-motion="off"]) .cols i{transform-origin:bottom;animation:bd-grow-y .6s var(--ease) both;animation-delay:calc(var(--i,0) * 30ms)}
-html:not([data-motion="off"]) .hbar i{transform-origin:left;animation:bd-grow-x .7s var(--ease) both}
-html:not([data-motion="off"]) .lines,html:not([data-motion="off"]) .spark,html:not([data-motion="off"]) #stream{animation:bd-fade .5s var(--ease) both}
-html:not([data-motion="off"]) #heat .cell-empty,html:not([data-motion="off"]) #heat path{animation:bd-fade .5s var(--ease) both;animation-delay:var(--d,0ms)}
-html:not([data-motion="off"]) .menu:not([hidden]){transform-origin:top right;animation:bd-pop .14s var(--ease) both}
-html:not([data-motion="off"]) .picker .menu:not([hidden]){transform-origin:top left}
-html:not([data-motion="off"]) dialog[open]{animation:bd-pop .2s var(--ease) both}
-html:not([data-motion="off"]) dialog[open]::backdrop{animation:bd-fade .2s both}
-html:not([data-motion="off"]) .btn,html:not([data-motion="off"]) .grp button,html:not([data-motion="off"]) .seg button,html:not([data-motion="off"]) .nav-item,html:not([data-motion="off"]) .chip{transition:background .18s var(--ease),color .18s var(--ease),border-color .18s var(--ease),transform .12s var(--ease)}
-html:not([data-motion="off"]) .btn:active,html:not([data-motion="off"]) .grp button:active,html:not([data-motion="off"]) .seg button:active{transform:scale(.97)}
-html:not([data-motion="off"]) .theme svg{transition:transform .3s var(--ease)}
-html:not([data-motion="off"]) .theme:active svg{transform:rotate(60deg)}
-html:not([data-motion="off"]) .tip{animation:bd-fade .12s both}
+/* Entrances */
+.page.on{animation:bd-fade .24s var(--ease) backwards}
+.page.on>*{animation:bd-rise .55s var(--ease) backwards;animation-delay:calc(var(--i,0) * 70ms)}
+.kpi{animation:bd-rise .6s var(--ease) backwards;animation-delay:calc(var(--i,0) * 80ms)}
+.g2>*,.g3>*,.pcat>.tile,.heroes>*,.stats2>*,.stats3>*,.stats4>*{animation:bd-rise .5s var(--ease) backwards;animation-delay:calc(var(--i,0) * 60ms)}
+.cols i{transform-origin:bottom;animation:bd-grow-y .6s var(--ease) backwards;animation-delay:calc(var(--i,0) * 30ms)}
+.hbar i{transform-origin:left;animation:bd-grow-x .7s var(--ease) backwards}
+.lines,.spark,#stream{animation:bd-reveal 1s var(--ease) backwards;animation-delay:.12s}
+#heat path{transform-box:fill-box;transform-origin:center;animation:bd-pop .5s var(--ease) backwards;animation-delay:var(--d,0ms)}
+#heat .cell-empty{animation:bd-fade .5s var(--ease) backwards;animation-delay:var(--d,0ms)}
+#heat .glow-cell{animation:bd-glow 3.4s ease-in-out 1s infinite}
+.mx td{animation:bd-pop .45s var(--ease) backwards;animation-delay:calc(var(--i,0) * 40ms)}
+.proj,.li{animation:bd-rise .45s var(--ease) backwards;animation-delay:calc(var(--i,0) * 30ms)}
+#sections .nav-item{animation:bd-rise .5s var(--ease) backwards;animation-delay:calc(var(--i,0) * 45ms)}
+.nav-item{position:relative}
+.nav-item.on::before{content:"";position:absolute;left:0;top:26%;bottom:26%;width:3px;border-radius:2px;background:var(--text);animation:bd-grow-y .3s var(--ease) backwards}
+.menu:not([hidden]){transform-origin:top right;animation:bd-pop .14s var(--ease) backwards}
+.picker .menu:not([hidden]){transform-origin:top left}
+dialog[open]{animation:bd-pop .2s var(--ease) backwards}
+dialog[open]::backdrop{animation:bd-fade .2s backwards}
+.tip{animation:bd-fade .12s backwards}
 
-/* Rich only */
-html[data-motion="rich"] .page.on>*{animation:bd-rise .55s var(--ease) both;animation-delay:calc(var(--i,0) * 70ms)}
-html[data-motion="rich"] .kpi{animation:bd-rise .6s var(--ease) both;animation-delay:calc(var(--i,0) * 80ms)}
-html[data-motion="rich"] .g2>*,html[data-motion="rich"] .g3>*,html[data-motion="rich"] .pcat>.tile,html[data-motion="rich"] .heroes>*,html[data-motion="rich"] .stats2>*,html[data-motion="rich"] .stats3>*,html[data-motion="rich"] .stats4>*{animation:bd-rise .5s var(--ease) both;animation-delay:calc(var(--i,0) * 60ms)}
-html[data-motion="rich"] .lines,html[data-motion="rich"] .spark,html[data-motion="rich"] #stream{animation:bd-reveal 1s var(--ease) both;animation-delay:.12s}
-html[data-motion="rich"] #heat path{transform-box:fill-box;transform-origin:center;animation:bd-pop .5s var(--ease) both;animation-delay:var(--d,0ms)}
-html[data-motion="rich"] #heat .cell-empty{animation:bd-fade .5s var(--ease) both;animation-delay:var(--d,0ms)}
-html[data-motion="rich"] #heat .glow-cell{animation:bd-glow 3.4s ease-in-out 1s infinite}
-html[data-motion="rich"] .mx td{animation:bd-pop .45s var(--ease) both;animation-delay:calc(var(--i,0) * 40ms)}
-html[data-motion="rich"] .proj,html[data-motion="rich"] .li{animation:bd-rise .45s var(--ease) both;animation-delay:calc(var(--i,0) * 30ms)}
-html[data-motion="rich"] #sections .nav-item{animation:bd-rise .5s var(--ease) both;animation-delay:calc(var(--i,0) * 45ms)}
-html[data-motion="rich"] .nav-item{position:relative}
-html[data-motion="rich"] .nav-item.on::before{content:"";position:absolute;left:0;top:26%;bottom:26%;width:3px;border-radius:2px;background:var(--text);transform-origin:center;animation:bd-grow-y .3s var(--ease) both}
-html[data-motion="rich"] .kpi,html[data-motion="rich"] .tile,html[data-motion="rich"] .panel{transition:transform .25s var(--ease),border-color .25s var(--ease),box-shadow .25s var(--ease)}
-html[data-motion="rich"] .kpi:hover,html[data-motion="rich"] .tile:hover,html[data-motion="rich"] .panel:hover{transform:translateY(-3px);border-color:var(--line2)}
-html[data-motion="rich"] .proj{transition:background .18s,transform .2s var(--ease)}html[data-motion="rich"] .proj:hover{transform:translateX(3px)}
+/* The share card assembles itself each time it opens: the nodes rise in turn, the stream draws in last */
+#card.assemble>text,#card.assemble>use,#card.assemble>line{animation:bd-rise .55s var(--ease) backwards;animation-delay:var(--k,0ms)}
+#card.assemble #c-stream{animation:bd-reveal 1.1s var(--ease) .4s backwards}
 
-.motion{border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;padding:6px 8px;border-radius:9px;cursor:pointer;white-space:nowrap}.motion:hover{background:var(--track);color:var(--text)}
+/* Answers to the pointer: no transforms on text, so text stays sharp */
+.btn,.grp button,.seg button,.nav-item,.chip{transition:background .18s var(--ease),color .18s var(--ease),border-color .18s var(--ease)}
+.btn:active,.grp button:active,.seg button:active{transform:scale(.97)}
+.theme svg{transition:transform .3s var(--ease)}.theme:active svg{transform:rotate(60deg)}
+.kpi,.tile,.panel,.chart-card,.heat{position:relative;transition:border-color .25s var(--ease)}
+.kpi:hover,.tile:hover,.panel:hover{border-color:var(--line2)}
+.kpi::before,.tile::before,.panel::before,.chart-card::before,.heat::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;opacity:0;transition:opacity .3s var(--ease);background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.075),transparent 65%)}
+.kpi:hover::before,.tile:hover::before,.panel:hover::before,.chart-card:hover::before,.heat:hover::before{opacity:1}
+:root[data-theme=light] .kpi::before,:root[data-theme=light] .tile::before,:root[data-theme=light] .panel::before,:root[data-theme=light] .chart-card::before,:root[data-theme=light] .heat::before{background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(0,0,0,.05),transparent 65%)}
+.tile>*,.panel>*,.chart-card>*,.heat>*{position:relative;z-index:1}
+.proj{transition:background .18s var(--ease)}
+
+/* A limit close to its end: a red ring that breathes */
+.panel.hot::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;box-shadow:0 0 0 1px rgba(224,96,90,.6),0 0 22px rgba(224,96,90,.35);animation:bd-hot 2.2s ease-in-out infinite}
+
+/* Numbers roll like a departures board: every character sits in a box one line tall, digits in a strip of ten */
+.digit,.ch{display:inline-block;height:1.25em;line-height:1.25em;vertical-align:top}
+.ch{white-space:pre}
+.digit{overflow:hidden}
+.strip{display:block;transition:transform .9s var(--ease)}
+.strip>span{display:block;height:1.25em;line-height:1.25em}
+
+/* A streak of a week or more throws confetti once */
+.heroes{position:relative}
+.confetti{position:absolute;left:75%;top:30%;width:0;height:0;pointer-events:none;z-index:3}
+.confetti i{position:absolute;width:7px;height:11px;border-radius:2px;animation:bd-confetti 1.7s cubic-bezier(.2,.7,.3,1) forwards}
 
 @media (prefers-reduced-motion:reduce){html *,html *::before,html *::after{animation:none!important;transition:none!important}}
-@media print{html *{animation:none!important;transition:none!important}}
+@media print{html *{animation:none!important;transition:none!important}.confetti{display:none}}
 `
 
 export const MOTION_JS = `
-var MOTION_MODES = ['off', 'subtle', 'rich']
-function motionNow() { return document.documentElement.getAttribute('data-motion') }
+var morphNext = false, prevD = [], celebrated = false, lastStreak = 0
 function reducedMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) }
-// Numbers count up from zero in Rich mode; the last frame is always the exact value.
-function animateNumber(node, to, fmt) {
-  if (!node || motionNow() !== 'rich' || reducedMotion() || !window.requestAnimationFrame) return
-  var t0 = null, done = false
-  // A timer sets the exact value even if the browser never runs a frame (a hidden tab), so the number can not stay at zero.
-  function finish() { if (!done) { done = true; node.nodeValue = fmt(to) } }
-  function step(ts) {
-    if (done) return
-    if (t0 === null) t0 = ts
-    var p = Math.min(1, (ts - t0) / 800)
-    if (p >= 1) return finish()
-    node.nodeValue = fmt(to * (1 - Math.pow(1 - p, 3)))
-    window.requestAnimationFrame(step)
-  }
-  node.nodeValue = fmt(0)
-  window.requestAnimationFrame(step)
-  setTimeout(finish, 950)
+
+// ---- rolling numbers ------------------------------------------------------------------------------------------------
+// The text node becomes one box per character; a digit is a strip of 0 to 9 that slides to its value, left to right.
+function rollNode(node) {
+  var host = node && node.parentNode, text = node && node.nodeValue
+  if (!host || !text || reducedMotion()) return
+  var frag = document.createDocumentFragment(), digits = []
+  host.setAttribute('data-roll', text); host.setAttribute('aria-label', text)
+  text.split('').forEach(function (ch) {
+    if (ch >= '0' && ch <= '9') {
+      var d = h('span', 'digit'), strip = h('span', 'strip')
+      for (var n = 0; n < 10; n++) strip.append(h('span', '', String(n)))
+      strip.setAttribute('data-to', ch); d.setAttribute('aria-hidden', 'true'); d.append(strip); frag.append(d); digits.push(strip)
+    } else { var c = h('span', 'ch', ch); c.setAttribute('aria-hidden', 'true'); frag.append(c) }
+  })
+  host.insertBefore(frag, node); host.removeChild(node)
+  settleDigits(digits)
 }
+function settleDigits(strips) {
+  setTimeout(function () { strips.forEach(function (s, i) { s.style.transitionDelay = i * 55 + 'ms'; s.style.transform = 'translateY(' + (-(+s.getAttribute('data-to')) * 1.25) + 'em)' }) }, 40)
+}
+function rollAll() {
+  document.querySelectorAll('.kpi-value, #chart-total, .hero-value, .stat-v').forEach(function (el) {
+    var n = el.firstChild
+    if (n && n.nodeType === 3) rollNode(n)
+  })
+}
+// A page that was hidden when its numbers settled rolls them again when it is shown.
+function replayRoll(page) {
+  if (!page || reducedMotion()) return
+  var strips = Array.from(page.querySelectorAll('.strip'))
+  strips.forEach(function (s) { s.style.transition = 'none'; s.style.transform = 'translateY(0)' })
+  void page.getBoundingClientRect()
+  strips.forEach(function (s) { s.style.transition = '' })
+  settleDigits(strips)
+}
+
+// ---- the main chart morphs between metrics ------------------------------------------------------------------------------
+function morph(el, from, to) {
+  if (!from || from === to || from.replace(/[0-9.,-]+/g, '#') !== to.replace(/[0-9.,-]+/g, '#')) return
+  el.animate([{ d: 'path("' + from + '")' }, { d: 'path("' + to + '")' }], { duration: 700, easing: 'cubic-bezier(.2,.7,.2,1)' })
+}
+function morphStream(box) {
+  var paths = Array.from(box.querySelectorAll('path')), ds = paths.map(function (p) { return p.getAttribute('d') })
+  if (morphNext && !reducedMotion() && prevD.length === ds.length && paths.length && paths[0].animate) paths.forEach(function (p, i) { morph(p, prevD[i], ds[i]) })
+  prevD = ds; morphNext = false
+}
+
+// ---- confetti, share card, pointer glow ------------------------------------------------------------------------------
+function celebrate() {
+  if (celebrated || lastStreak < 7 || reducedMotion()) return
+  var box = document.querySelector('.heroes')
+  if (!box) return
+  celebrated = true
+  var wrap = h('div', 'confetti')
+  wrap.setAttribute('aria-hidden', 'true')
+  for (var i = 0; i < 36; i++) {
+    var p = h('i'), a = Math.PI * 2 * i / 36 + Math.random() * .4, r = 70 + Math.random() * 120
+    p.style.setProperty('--dx', Math.round(Math.cos(a) * r) + 'px'); p.style.setProperty('--dy', Math.round(Math.sin(a) * r - 40) + 'px')
+    p.style.setProperty('--rot', Math.round(Math.random() * 540 - 270) + 'deg'); p.style.background = PALETTE[i % PALETTE.length]
+    p.style.animationDelay = Math.round(Math.random() * 120) + 'ms'; wrap.append(p)
+  }
+  box.append(wrap)
+  setTimeout(function () { if (wrap.remove) wrap.remove() }, 2300)
+}
+function assembleCard() {
+  var c = byId('card')
+  if (!c || reducedMotion()) return
+  Array.from(c.children).forEach(function (k, i) { if (k.style) k.style.setProperty('--k', i * 45 + 'ms') })
+  c.classList.remove('assemble'); void c.getBoundingClientRect(); c.classList.add('assemble')
+}
+function pointerGlow() {
+  document.addEventListener('pointermove', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('.kpi, .panel, .tile, .chart-card, .heat') : null
+    if (!t) return
+    var r = t.getBoundingClientRect()
+    t.style.setProperty('--mx', Math.round(e.clientX - r.left) + 'px'); t.style.setProperty('--my', Math.round(e.clientY - r.top) + 'px')
+  })
+}
+
 // The index of each child among its siblings, for the staggered entrances.
 function stagger() {
   ;['.page.on', '.kpis', '.pcat', '.g2', '.g3', '.stats2', '.stats3', '.stats4', '.heroes', '.cols', '.hm', '#sections', '#b-projects', '.panel'].forEach(function (sel) {
@@ -82,19 +164,5 @@ function stagger() {
   })
   Array.from(document.querySelectorAll('.mx td')).forEach(function (td, i) { td.style.setProperty('--i', i) })
 }
-function applyMotion(mode) {
-  document.documentElement.setAttribute('data-motion', mode)
-  var b = byId('motion'); b.textContent = 'Motion: ' + cap(mode); b.setAttribute('aria-label', 'Motion: ' + mode + (reducedMotion() ? ' (your system asks for reduced motion, so nothing moves)' : '') + ', switch to ' + MOTION_MODES[(MOTION_MODES.indexOf(mode) + 1) % 3])
-}
-function initMotion() {
-  var saved = ''
-  try { saved = localStorage.getItem('ponytail-board-motion') || '' } catch (e) {}
-  applyMotion(MOTION_MODES.indexOf(saved) >= 0 ? saved : 'rich')
-  byId('motion').addEventListener('click', function () {
-    var next = MOTION_MODES[(MOTION_MODES.indexOf(motionNow()) + 1) % 3]
-    applyMotion(next)
-    try { localStorage.setItem('ponytail-board-motion', next) } catch (e) {}
-    render()
-  })
-}
+function initMotion() { pointerGlow() }
 `
