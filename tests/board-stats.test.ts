@@ -76,7 +76,7 @@ test('review and audit: runs, findings and the share followed by edits', () => {
   expect(r.fixedShare).toBe(1)
 })
 
-test('categories: a long project is Large, a short chat is Chat, board.json can override', () => {
+test('categories: a long project is Large, a tiny one is Small, board.json can override', () => {
   const tasks = [
     ...Array.from({ length: 12 }, (_, i) => ({ project: 'Steward', started: `2026-11-${String(i + 1).padStart(2, '0')} 10:00`, turns: 60, cost: 25 })),
     { project: 'Quick', started: '2026-11-02 09:00', turns: 3, cost: 0.2 },
@@ -85,7 +85,7 @@ test('categories: a long project is Large, a short chat is Chat, board.json can 
   expect(r.find((p: { name: string }) => p.name === 'Steward').category).toBe('Large')
   const quick = r.find((p: { name: string }) => p.name === 'Quick')
   expect([quick.category, quick.label]).toEqual(['Small', 'Quick question'])
-  expect(S.categorize([{ project: 'Chat1', started: '2026-11-02 09:00', turns: 3, cost: 0.2 }], [], {})[0].category).toBe('Chat')
+  expect(S.categorize([{ project: 'Tiny', started: '2026-11-02 09:00', turns: 3, cost: 0.2 }], [], {})[0].category).toBe('Small')
 })
 
 test('the Chats group is always the Chat category, however big', () => {

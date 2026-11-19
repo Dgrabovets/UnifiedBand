@@ -29,7 +29,7 @@ export const MOTION_CSS = `
 #heat .cell-empty{animation:bd-fade .5s var(--ease) backwards;animation-delay:var(--d,0ms)}
 #heat .glow-cell{animation:bd-glow 3.4s ease-in-out 1s infinite}
 .mx td{animation:bd-pop .45s var(--ease) backwards;animation-delay:calc(var(--i,0) * 40ms)}
-.proj,.li{animation:bd-rise .45s var(--ease) backwards;animation-delay:calc(var(--i,0) * 30ms)}
+.proj,.li,.prow{animation:bd-rise .45s var(--ease) backwards;animation-delay:calc(var(--i,0) * 30ms)}
 #sections .nav-item{animation:bd-rise .5s var(--ease) backwards;animation-delay:calc(var(--i,0) * 45ms)}
 .nav-item{position:relative}
 .nav-item.on::before{content:"";position:absolute;left:0;top:26%;bottom:26%;width:3px;border-radius:2px;background:var(--text);animation:bd-grow-y .3s var(--ease) backwards}

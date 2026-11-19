@@ -29,6 +29,8 @@ test('the page has every section, the grouped buttons, the export dialog and no 
   expect(html.includes('data-page="projects"')).toBe(false)
   expect(html.indexOf('id="sec-projects"')).toBeGreaterThan(html.indexOf('data-page="overview"'))
   expect(html.indexOf('id="sec-projects"')).toBeLessThan(html.indexOf('class="card heat"'))
+  expect(html.includes('id="legend"')).toBe(false)
+  expect(html.includes('.prow{display:grid')).toBe(true)
   expect(html.includes('id="back"')).toBe(false)
   expect(html.includes('id="rows"')).toBe(false)
   expect(html.includes('Search sessions')).toBe(false)
