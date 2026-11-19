@@ -25,7 +25,7 @@ test('the band draws every Ponytail button on each surface', async ($, on) => {
 
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...BAND, surface })
-    for (const key of ['level-off', 'level-lite', 'level-full', 'level-ultra', 'copy', 'review', 'audit', 'board', 'compact']) {
+    for (const key of ['level-off', 'level-lite', 'level-full', 'level-ultra', 'review', 'audit', 'board', 'compact']) {
       expect(await ui.find({ type: 'Button', key })).toBeDefined()
     }
     expect(await ui.find({ type: 'Text', text: /Context/ })).toBeDefined()

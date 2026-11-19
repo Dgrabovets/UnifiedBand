@@ -103,8 +103,11 @@ export async function afterPrompt($: EngineInterface, e: { text: string }) {
 
 export async function afterTurn($: EngineInterface, e: TurnCompleteInput, options: Options, b: Band) {
   await refresh($, options)
-  // A subagent's turn is not the session's last turn.
-  if (e.agentId !== undefined) return
+  // A subagent's turn is not the session's last turn; the journal keeps its size for the Extras section.
+  if (e.agentId !== undefined) {
+    await logEvent($, { t: 'agent', ...(await where($)), ms: e.durationMs, tokens: e.usage ? e.usage.input + e.usage.output : 0 })
+    return
+  }
   const u = e.usage
   const total = u ? u.input + u.cacheRead + u.cacheWrite : 0
   const at = await $.clock.now()

@@ -5,7 +5,7 @@ Ponytail (mode, skills, task tracking and board) merged with one band above the 
 ## What it shows
 
 - Level buttons: Off, Lite, Full, Ultra (the current level is highlighted).
-- Action buttons: Copy, Review, Audit, Board, Compact.
+- Action buttons: Review, Audit, Board, Compact.
 - Two info lines: folder, branch, session age, prompt count, cost; last turn duration, model, cache hit rate, idle time, compactions.
 - Cards that stretch to fill each row: Branch, Cost, Tokens, Agent Time, Reuse, Callers, Tests, Context, 5-Hour Limit, Weekly Limit, Project Completion.
 - Toasts when a usage limit crosses 80% and 95%.
@@ -21,6 +21,30 @@ Project Completion is the share of checked boxes in a Markdown checklist (`- [x]
 ## Credits
 
 The mode, skills, hooks, task tracking and board come from [Ponytail](https://github.com/DietrichGebert/PonyTail) by DietrichGebert (MIT, see `LICENSE-PONYTAIL`). Changes: the state key and skill namespace are `unified-band`, the band is redrawn, and the mode tracker also answers `/unified-band:ponytail`.
+
+## Board
+
+The Board button opens a local page (no server, no network) built from three sources: the task ledger, the event journal and the model router's log.
+
+- **Overview**: four cards with sparklines (Sessions, Agent time, Cost, Tokens), a stacked chart by project, the Activity honeycomb, period 7d, 30d, 90d, All, and Share card.
+- **Projects**: every project worked on, in four categories (Large, Medium, Small, Chat) scored from turns, cost, sessions, days of work and whether it has a `PLAN.md`. Click a Large project for its own page with all the sections below filtered to it.
+- **Context and limits**: context fill curves, fill rate, life before compaction, 5-hour window peaks, burn rate, weekly forecast, blocks.
+- **Reuse**, **Model Router** (matrix from your model to the chosen one, savings estimate, last decisions), **Plans** (burn-up, velocity, projects without a plan), **Review and Audit**, **Extras** (cache, tests, cost by model, working hours, expensive sessions, push backs, subagents).
+- **Export**: every section has Export (Markdown, CSV, JSON). Export all takes any sections, with an option to hide project names. Copy summary puts a short Markdown report on the clipboard.
+
+The event journal lives in `~/.config/ponytail/band/events-YYYY-MM.jsonl`: one line per turn, prompt, compaction, `/model` command, subagent turn and review or audit run. It never stores prompt text, only counts and flags. History starts the day the journal is first written.
+
+### board.json
+
+Optional, next to the journal. Rename a project or force its category:
+
+```json
+{ "projects": { "SipAndTell": { "label": "Sip & Tell", "category": "Large" } } }
+```
+
+### Checking the page
+
+`node scripts/smoke-board.mjs out.html` builds the page from your real ledger plus a synthetic journal and runs its script against a stand-in DOM. Needs Node 22.15 or later.
 
 ## Install
 

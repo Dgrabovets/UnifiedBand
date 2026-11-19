@@ -3,6 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import { boardHtml, tasksFrom } from './board'
 import type { Band } from '../../types'
+import { boardExtra } from './events'
 import { afterPrompt, afterStart, afterTurn, countEdit } from './live'
 import {
   GREP_DEFS,
@@ -104,7 +105,8 @@ async function readTitle($: EngineInterface, transcript: string): Promise<string
 async function readModel($: EngineInterface, transcript: string): Promise<string> {
   if (transcript === '') return ''
   const grep = await $.process.run(['grep', '-o', MODEL_PATTERN, transcript]).catch(() => undefined)
-  return grep?.exitCode === 0 ? mainModel(grep.stdout) : ''
+  // Without grep (Windows) the transcript itself is read, which works up to the 4 MiB the engine allows.
+  return mainModel(grep?.exitCode === 0 ? grep.stdout : await $.fs.read(transcript).catch(() => ''))
 }
 
 // Where Claude Code keeps the session's transcript: on managed, Team and Enterprise machines its cc-plugin-sec-default skips every classic.* hook, so no hook hands the path over.
@@ -167,7 +169,7 @@ async function writeBoard($: EngineInterface, dir: string) {
   const entries = await $.fs.list(dir).catch(() => [])
   const texts = await Promise.all(entries.filter(f => f.kind === 'file' && f.name.endsWith('.csv')).map(f => $.fs.read(`${dir}/${f.name}`).catch(() => '')))
   const file = `${dir}/board.html`
-  await $.fs.write(file, boardHtml(texts.flatMap(tasksFrom), await $.clock.now()))
+  await $.fs.write(file, boardHtml(texts.flatMap(tasksFrom), await $.clock.now(), await boardExtra($).catch(() => undefined)))
   return file
 }
 
