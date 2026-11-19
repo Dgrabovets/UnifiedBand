@@ -33,6 +33,7 @@ export const SECTIONS_CSS = `
 .side,.actions,.exp,.theme,.top .btn.sm,.seg,dialog{display:none!important}
 .app{display:block}main{padding:0;max-width:none}
 .page{display:none}.page.on,.page:not(.print-skip){display:flex}.page.print-skip{display:none!important}
+.page{break-after:page}.page:last-of-type{break-after:auto}
 .card{box-shadow:none;background:#fff;border:1px solid #ddd;break-inside:avoid}.sec,.chart-card,.kpi,.panel{break-inside:avoid}
 body{background:#fff}footer{display:none}
 }
