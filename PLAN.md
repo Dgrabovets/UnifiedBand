@@ -197,6 +197,12 @@ Always on, one rich level; the system "reduce motion" setting turns everything o
 - [x] Header: Share menu (Share card, Copy summary) and an Export button; Export dialog with PDF, Markdown and Raw data rows (JSON removed)
 - [x] Share card as a poster: sessions as the big number, four figures and the period stream; shown whole in the dialog
 
+### 14. Board, export dialog polish (S)
+
+- [x] A custom checkbox in the Board's own style, with a mixed state
+- [x] Raw data follows the ticked sections; "All" checkbox; Options set apart from Sections
+- [x] The Share card no longer goes empty when every project is hidden in the table
+
 ## Decisions
 
 1. Project categories: option C (points), plus a page for every large project.

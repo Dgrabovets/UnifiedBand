@@ -80,7 +80,7 @@ body{background:#fff}footer{display:none}
 .prow.head{border-top:0;color:var(--faint);font-size:12px;padding:2px 0 6px}.prow .r{text-align:right}.prow.dim{opacity:.4}
 .psw{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--c);background:var(--c);padding:0;cursor:pointer}.psw[aria-pressed=false]{background:transparent}
 .plink{border:0;background:transparent;color:var(--text);font:inherit;text-align:left;padding:0;cursor:pointer}.plink:hover{text-decoration:underline}.plink.dimmed{color:var(--muted);text-align:right}
-.fc{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer}.fc.on{background:var(--text);color:var(--bg);border-color:transparent}.fl{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}.psel{width:16px;height:16px;margin:0;accent-color:var(--text);cursor:pointer}
+.fc{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer}.fc.on{background:var(--text);color:var(--bg);border-color:transparent}.fl{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}.xhead{display:flex;justify-content:space-between;align-items:center;margin:4px 0 2px}.xhead .li{padding:0;border:0}.xopt{margin-top:18px;padding-top:16px;border-top:1px solid var(--line2)}
 @media (max-width:860px){.prow{grid-template-columns:24px minmax(0,1fr) 76px 80px 64px}.prow>:nth-child(3),.prow>:nth-child(6){display:none}}
 .hm{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:3px;margin-top:6px}.hm i{aspect-ratio:1;border-radius:4px;display:block;background:var(--empty)}
 .cat-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line2)}
@@ -406,9 +406,12 @@ function drawPicker() {
 
 // Everything the board knows, for sending to someone who will analyse it. Prompt text is never in the journal;
 // session titles come only when asked for, and project names can be hidden.
+// The sections ticked in the Export dialog.
+function chosenIds() { return Array.from(byId('export-list').querySelectorAll('input')).filter(function (c) { return c.checked }).map(function (c) { return c.value }) }
 function rawData() {
-  var titles = byId('with-titles').checked, summary = {}
-  Object.keys(EXPORTS).forEach(function (id) { summary[id] = EXPORTS[id] })
+  var titles = byId('with-titles').checked, summary = {}, ids = chosenIds()
+  var has = function () { return Array.prototype.some.call(arguments, function (x) { return ids.indexOf(x) >= 0 }) }
+  Object.keys(EXPORTS).forEach(function (id) { if (has(id)) summary[id] = EXPORTS[id] })
   var out = {
     app: BRAND, generated: new Date(now).toISOString(), scope: stamp(), titlesIncluded: titles,
     note: 'Project names are folder names; spare-, scratch-, sandbox and drive roots are grouped as Chats. Times are local to the machine that built the board.',
@@ -426,6 +429,11 @@ function rawData() {
     events: EV.map(function (e) { var o = {}; for (var k in e) if (k !== 'root') o[k] = e[k]; return o }),
     router: AUD, summary: summary
   }
+  // Only what the ticked sections draw on: the ledger for Overview, Projects, Reuse and Extras; the journal for most others; the router log for Router.
+  out.sections = ids
+  if (!has('overview', 'projects', 'reuse', 'extras')) delete out.tasks
+  if (!has('context', 'reuse', 'router', 'plans', 'runs', 'extras')) delete out.events
+  if (!has('router')) delete out.router
   if (byId('hide-names').checked) { var m = hideMap(); out = maskTree(out, m); out.config = maskTree(CFG, m, true); out.scope = stamp(m) }
   return JSON.stringify(out, null, 1)
 }
@@ -515,7 +523,11 @@ function wireExport() {
     var l = h('label', 'li'), c = h('input'); c.type = 'checkbox'; c.checked = true; c.value = id
     l.append(c, h('span', '', (EXPORTS[id] ? EXPORTS[id].title : id))); list.append(l)
   })
-  function chosen() { return Array.from(list.querySelectorAll('input')).filter(function (c) { return c.checked }).map(function (c) { return c.value }) }
+  var chosen = chosenIds, allBox = byId('export-all-sections')
+  function syncAllBox() { var n = chosen().length, t = list.querySelectorAll('input').length; allBox.checked = n === t; allBox.indeterminate = n > 0 && n < t }
+  list.addEventListener('change', syncAllBox)
+  allBox.addEventListener('change', function () { list.querySelectorAll('input').forEach(function (c) { c.checked = allBox.checked }); syncAllBox() })
+  syncAllBox()
   byId('export-all').addEventListener('click', function () { dlg.showModal() })
   byId('export-close').addEventListener('click', function () { dlg.close() })
   byId('export-pdf').addEventListener('click', function () { dlg.close(); printIds(chosen()) })

@@ -130,6 +130,13 @@ h1{margin:2px 0 0;font-size:26px;font-weight:650;letter-spacing:-.02em}.top p{ma
 .seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;padding:6px 12px;border-radius:9px;cursor:pointer}
 .seg button.on{background:var(--segOn);color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px var(--line2)}
 .btn{border:1px solid var(--line2);background:var(--track);color:var(--text);font:inherit;font-size:13px;padding:8px 14px;border-radius:11px;cursor:pointer}
+input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:18px;height:18px;margin:0;border:1.5px solid var(--line2);border-radius:6px;background:transparent;display:inline-grid;place-content:center;cursor:pointer;transition:background .15s var(--ease),border-color .15s var(--ease)}
+input[type=checkbox]::after{content:"";width:10px;height:10px;background:var(--bg);clip-path:polygon(14% 44%,0 59%,40% 100%,100% 17%,85% 0,39% 62%);transform:scale(0);transition:transform .15s var(--ease)}
+input[type=checkbox]:hover{border-color:var(--muted)}
+input[type=checkbox]:checked,input[type=checkbox]:indeterminate{background:var(--text);border-color:var(--text)}
+input[type=checkbox]:checked::after{transform:scale(1)}
+input[type=checkbox]:indeterminate::after{clip-path:none;width:10px;height:2px;border-radius:1px;transform:scale(1)}
+input[type=checkbox]:focus-visible{outline:2px solid var(--text);outline-offset:2px}
 .btn.primary{background:var(--text);color:var(--bg);border-color:transparent}.btn:hover{border-color:var(--faint)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px}
@@ -396,7 +403,9 @@ const APP = `(function () {
 
   // The share card: the numbers and the stream of what is on screen.
   function card() {
-    var list = scope(), n = span(), keys = days(n), cur = inDays(list, keys).filter(function (t) { return !state.hidden[t.project] })
+    var list = scope(), n = span(), keys = days(n), cur = inDays(list, keys), shown = cur.filter(function (t) { return !state.hidden[t.project] })
+    // Projects hidden from the chart are left out of the card too, unless that would leave it empty.
+    if (shown.length) cur = shown
     var projects = names.filter(function (p) { return cur.some(function (t) { return t.project === p }) })
     byId('c-scope').textContent = (state.project || plural(projects.length, 'project')) + ' · ' + (state.period ? 'last ' + n + ' days' : 'all time')
     byId('c-sessions').textContent = String(cur.length)
@@ -533,7 +542,7 @@ ${sectionHtml('projects')}
 ${['context', 'reuse', 'router', 'plans', 'runs', 'extras'].map(id => `<div class="page" data-page="${id}">${sectionHtml(id)}</div>`).join('\n')}
 <footer>Measured by the ${esc(name)} band in Claude Code. Cost is the API-priced cost Claude Code reports (/cost), not a bill. Nothing here is estimated.</footer>
 </main></div>
-<dialog id="export-dialog"><div class="dlg-head"><b>Export</b><button type="button" class="btn" id="export-close" aria-label="Close">✕</button></div><div class="dlg-body"><div class="xrows"><div class="xrow"><span>PDF <i>print the chosen sections</i></span><button type="button" class="btn" id="export-pdf">Download</button></div><div class="xrow"><span>Markdown <i>a short text report</i></span><button type="button" class="btn" id="export-md">Download</button></div><div class="xrow"><span>Raw data <i>everything the Board knows, for analysis</i></span><button type="button" class="btn" id="export-raw-dlg">Download</button></div></div><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label><label class="li"><input type="checkbox" id="with-titles"><span>Include session titles (the first words of each prompt)</span></label></div></dialog>
+<dialog id="export-dialog"><div class="dlg-head"><b>Export</b><button type="button" class="btn" id="export-close" aria-label="Close">✕</button></div><div class="dlg-body"><div class="xrows"><div class="xrow"><span>PDF <i>print the chosen sections</i></span><button type="button" class="btn" id="export-pdf">Download</button></div><div class="xrow"><span>Markdown <i>a short text report</i></span><button type="button" class="btn" id="export-md">Download</button></div><div class="xrow"><span>Raw data <i>everything the Board knows, for analysis</i></span><button type="button" class="btn" id="export-raw-dlg">Download</button></div></div><div class="xhead"><span class="stat-l">Sections</span><label class="li xall"><input type="checkbox" id="export-all-sections" aria-label="All sections"><span>All</span></label></div><div id="export-list"></div><div class="xhead xopt"><span class="stat-l">Options</span></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label><label class="li"><input type="checkbox" id="with-titles"><span>Include session titles (the first words of each prompt)</span></label></div></dialog>
 <dialog id="share-dialog"><div class="dlg-head"><b>Share card</b><div class="dlg-actions"><button type="button" class="btn" id="save-png">Save PNG</button><button type="button" class="btn" id="save-svg">Save SVG</button><button type="button" class="btn" id="share-close">Close</button></div></div><div class="dlg-body">${cardSvg(name)}</div></dialog>
 <script type="application/json" id="board-data">${json({ now, tasks, ...extra, brand: name })}</script>
 <script>${APP}</script></body></html>`
