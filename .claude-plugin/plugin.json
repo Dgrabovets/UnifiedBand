@@ -1,0 +1,42 @@
+{
+  "name": "unified-band",
+  "version": "0.2.0",
+  "description": "Ponytail mode and skills plus one band above the prompt: controls, session info, cost, tests, limits, model router and project completion.",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "progressFile": {
+      "type": "string",
+      "title": "Progress file",
+      "description": "Markdown checklist at the repo root. Project Completion is its checked boxes over all boxes. The card is hidden when the file is missing.",
+      "default": "PLAN.md"
+    },
+    "ledger": {
+      "type": "boolean",
+      "title": "Task board",
+      "description": "After every turn, write this task's row to ~/.config/ponytail/band/<project>.csv for the board.",
+      "default": true
+    },
+    "webhookUrl": {
+      "type": "string",
+      "title": "Webhook URL",
+      "description": "Optional: an https address that gets this task's row as JSON after every turn. Empty: nothing leaves this machine.",
+      "default": ""
+    },
+    "webhookToken": {
+      "type": "string",
+      "title": "Webhook token",
+      "sensitive": true,
+      "description": "Optional: sent to the webhook as a Bearer token."
+    },
+    "sendNames": {
+      "type": "boolean",
+      "title": "Send task names",
+      "default": true,
+      "description": "Send each task's name to the webhook. Off: the board shows the task without a name."
+    }
+  },
+  "author": {
+    "name": "OWNER-NAME"
+  },
+  "license": "MIT"
+}

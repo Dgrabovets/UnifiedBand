@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "unified-band",
+  "description": "Ponytail mode and skills plus one band above the Claude Code prompt.",
+  "owner": {
+    "name": "OWNER-NAME"
+  },
+  "plugins": [
+    {
+      "name": "unified-band",
+      "description": "Ponytail mode, skills and task tracking in one mod, with a single band above the prompt: controls, session info, cost, tests, limits, model router and project completion.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
