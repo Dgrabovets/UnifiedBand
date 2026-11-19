@@ -65,7 +65,19 @@ projects.forEach((project, pi) => {
   }
 })
 
-const html = boardHtml(tasks, now, { events, audit, config: { projects: { SipAndTell: { label: 'Sip & Tell' } } } })
+// REAL=1 swaps the synthetic journal for the real one: what the mod's boardExtra reads.
+let extra = { events, audit, config: { projects: { SipAndTell: { label: 'Sip & Tell' } } } }
+if (process.env.REAL) {
+  const realEvents = readdirSync(dir).filter(f => /^events-\d{4}-\d{2}\.jsonl$/.test(f)).sort().flatMap(f => readFileSync(join(dir, f), 'utf8').split('\n').flatMap(l => { try { return l ? [JSON.parse(l)] : [] } catch { return [] } }))
+  let realAudit = []
+  try {
+    realAudit = readFileSync(join(homedir(), '.claude', 'cache', 'router', 'audit.jsonl'), 'utf8').split('\n').flatMap(l => { try { const r = JSON.parse(l); return [{ ts: Date.parse(r.ts), session: r.session_id, parent: r.decision?.parent, model: r.decision?.model, effort: r.decision?.effort, tier: r.decision?.tier, conf: r.decision?.confidence, outcome: r.outcome, reason: r.decision?.reason }] } catch { return [] } })
+  } catch {}
+  let config = {}
+  try { config = JSON.parse(readFileSync(join(dir, 'board.json'), 'utf8')) } catch {}
+  extra = { events: realEvents, audit: realAudit, config }
+}
+const html = boardHtml(tasks, now, extra)
 const out = process.argv[2]
 if (out) writeFileSync(out, html)
 
@@ -115,6 +127,6 @@ try {
   process.exit(1)
 }
 const filled = ['b-projects', 'b-context', 'b-reuse', 'b-router', 'b-plans', 'b-runs', 'b-extras']
-console.log('tasks:', tasks.length, 'events:', events.length, 'audit:', audit.length, 'html bytes:', html.length)
+console.log('tasks:', tasks.length, 'events:', extra.events.length, 'audit:', extra.audit.length, 'html bytes:', html.length)
 filled.forEach(id => console.log(id.padEnd(12), log[id] ? `drew ${log[id]} nodes` : 'NOTHING'))
 if (filled.some(id => !log[id])) process.exit(2)
