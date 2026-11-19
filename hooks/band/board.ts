@@ -129,7 +129,8 @@ h1{margin:2px 0 0;font-size:26px;font-weight:650;letter-spacing:-.02em}.top p{ma
 .seg{display:inline-flex;background:var(--track);border:1px solid var(--line);border-radius:12px;padding:3px;flex:none}
 .seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;padding:6px 12px;border-radius:9px;cursor:pointer}
 .seg button.on{background:var(--segOn);color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px var(--line2)}
-.btn{border:1px solid var(--line2);background:var(--track);color:var(--text);font:inherit;font-size:13px;padding:8px 14px;border-radius:11px;cursor:pointer}.btn:hover{border-color:var(--faint)}
+.btn{border:1px solid var(--line2);background:var(--track);color:var(--text);font:inherit;font-size:13px;padding:8px 14px;border-radius:11px;cursor:pointer}
+.btn.primary{background:var(--text);color:var(--bg);border-color:transparent}.btn:hover{border-color:var(--faint)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px}
 .kpi{padding:18px 20px 0;position:relative;overflow:hidden}
@@ -173,7 +174,7 @@ footer{color:var(--faint);font-size:12px;margin-top:22px}
 dialog{border:1px solid var(--line);border-radius:18px;padding:0;background:var(--panel);color:var(--text);box-shadow:0 24px 70px rgba(0,0,0,.4);width:min(840px,92vw)}
 dialog::backdrop{background:rgba(0,0,0,.55)}
 .dlg-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
-.dlg-actions{display:flex;gap:8px}.dlg-body{padding:18px}.dlg-body svg{width:100%;height:auto;display:block;border-radius:12px}
+.dlg-actions{display:flex;gap:8px}.dlg-body{padding:18px}.dlg-body svg{width:100%;height:auto;max-height:calc(100vh - 150px);display:block;border-radius:12px}
 @media (max-width:1360px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:1100px){.grid2{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;border-right:0;border-bottom:1px solid var(--line)}
@@ -398,10 +399,9 @@ const APP = `(function () {
     var list = scope(), n = span(), keys = days(n), cur = inDays(list, keys).filter(function (t) { return !state.hidden[t.project] })
     var projects = names.filter(function (p) { return cur.some(function (t) { return t.project === p }) })
     byId('c-scope').textContent = (state.project || plural(projects.length, 'project')) + ' · ' + (state.period ? 'last ' + n + ' days' : 'all time')
-    byId('c-time').textContent = time(total(cur, METRICS.time.pick))
-    byId('c-cost').textContent = money(total(cur, METRICS.cost.pick))
-    byId('c-tokens').textContent = tok(total(cur, METRICS.tokens.pick))
     byId('c-sessions').textContent = String(cur.length)
+    var real = projects.filter(function (p) { return p !== 'Chats' })
+    byId('c-sub').textContent = plural(real.length, 'project') + (projects.length > real.length ? ' and chats' : '') + ' · ' + money(total(cur, METRICS.cost.pick)) + ' · ' + time(total(cur, METRICS.time.pick)) + ' of agent time'
     cardTiles(list, cur)
     var g = byId('c-stream'), W = 1200, base = 600, topY = 500; g.textContent = ''
     var layers = projects.map(function (p) { return perDay(cur.filter(function (t) { return t.project === p }), keys, METRICS.time.pick) })
@@ -473,8 +473,6 @@ const APP = `(function () {
 // The page fills its numbers and stream; the logo symbol joins it when the card is saved.
 const SANS = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
 const MONO = "'JetBrains Mono', ui-monospace, Menlo, monospace"
-const cardStat = (y: number, label: string, id: string) =>
-  `<text x="760" y="${y}" font-size="20" fill="#8d8b84">${label}</text><text id="${id}" x="1128" y="${y}" text-anchor="end" font-family="${MONO}" font-size="30" fill="#f3f2ee"></text>`
 const tile = (x: number, y: number, label: string, id: string) =>
   `<text x="${x}" y="${y}" font-size="17" fill="#8d8b84">${label}</text><text id="${id}" x="${x}" y="${y + 36}" font-family="${MONO}" font-size="27" fill="#f3f2ee"></text>`
 const cardSvg = (name: string) => `<svg id="card" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" font-family="${SANS}">
@@ -484,11 +482,10 @@ const cardSvg = (name: string) => `<svg id="card" xmlns="http://www.w3.org/2000/
 <use href="#pt-logo" x="72" y="62" width="48" height="55" color="#f3f2ee"/>
 <text x="134" y="98" font-family="${MONO}" font-size="28" font-weight="600" fill="#f3f2ee">${esc(name)}</text>
 <text id="c-scope" x="1128" y="98" text-anchor="end" font-size="20" fill="#8d8b84"></text>
-<text x="72" y="196" font-size="22" fill="#8d8b84">Agent time</text><text id="c-time" x="66" y="292" font-family="${MONO}" font-size="104" font-weight="600" letter-spacing="-5" fill="#f3f2ee"></text>
-${cardStat(172, 'Cost', 'c-cost')}${cardStat(228, 'Tokens', 'c-tokens')}${cardStat(284, 'Sessions', 'c-sessions')}
-<line x1="72" y1="326" x2="1128" y2="326" stroke="#242422"/>
-${tile(72, 362, 'Projects', 'c-projects')}${tile(360, 362, 'Active days', 'c-active')}${tile(648, 362, 'Streak', 'c-streak')}${tile(936, 362, 'Busiest day', 'c-busiest')}
-${tile(72, 436, 'Reuse', 'c-reuse')}${tile(360, 436, 'Router', 'c-router')}${tile(648, 436, 'Plan pace', 'c-plan')}${tile(936, 436, 'Reviews', 'c-runs')}
+<text x="72" y="190" font-size="22" fill="#8d8b84">Sessions</text><text id="c-sessions" x="66" y="296" font-family="${MONO}" font-size="112" font-weight="600" letter-spacing="-5" fill="#f3f2ee"></text>
+<text id="c-sub" x="72" y="340" font-size="24" fill="#8d8b84"></text>
+<line x1="72" y1="372" x2="1128" y2="372" stroke="#242422"/>
+${tile(72, 414, 'Active days', 'c-active')}${tile(360, 414, 'Streak', 'c-streak')}${tile(648, 414, 'Reuse', 'c-reuse')}${tile(936, 414, 'Plan pace', 'c-plan')}
 <text x="72" y="621" font-family="${MONO}" font-size="15" fill="#5e5c55">measured in Claude Code</text></svg>`
 
 // JSON inside a script block: "<" is escaped so no name can close the block.
@@ -522,7 +519,7 @@ export function boardHtml(tasks: Task[], now: number, extra: BoardExtra = { even
 <aside class="side"><div class="brand"><span class="logo"><svg viewBox="${LOGO_VIEWBOX}" aria-hidden="true"><use href="#pt-logo"/></svg></span>${esc(name)}</div><div class="side-label">Sections</div><nav id="sections">${SECTION_NAV}</nav><div class="side-foot"><div class="foot-text">Local board<br>${esc(day(now))}</div><span class="foot-sep"></span>${THEME_BUTTON}</div></aside>
 <main>
 <div class="top"><div><div class="crumb">Board / <b id="crumb"></b></div><h1 id="title"></h1><p id="subtitle"></p></div>
-<div class="actions"><div class="picker"><button type="button" class="btn" id="picker" aria-haspopup="menu">All projects ▾</button></div><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="grp" role="group" aria-label="Export"><button type="button" id="copy-summary">Copy summary</button><button type="button" id="export-all">Export all</button><button type="button" id="export-raw">Raw data</button><button type="button" id="share">Share card</button></div></div></div>
+<div class="actions"><div class="picker"><button type="button" class="btn" id="picker" aria-haspopup="menu">All projects ▾</button></div><div class="seg" role="group" aria-label="Period">${seg('period', [['7', '7d'], ['30', '30d'], ['90', '90d'], ['0', 'All']], '30')}</div><div class="picker share"><button type="button" class="btn" id="share-menu-btn" aria-haspopup="menu">Share ▾</button><div class="menu" id="share-menu" hidden><button type="button" id="share">Share card</button><button type="button" id="copy-summary">Copy summary</button></div></div><button type="button" class="btn primary" id="export-all">Export</button></div></div>
 <div class="page on" data-page="overview">
 <section class="kpis" id="kpis"></section>
 <section class="card chart-card"><div class="chart-head"><div><div class="label" id="chart-sub"></div><div class="big num" id="chart-total"></div></div>
@@ -536,7 +533,7 @@ ${sectionHtml('projects')}
 ${['context', 'reuse', 'router', 'plans', 'runs', 'extras'].map(id => `<div class="page" data-page="${id}">${sectionHtml(id)}</div>`).join('\n')}
 <footer>Measured by the ${esc(name)} band in Claude Code. Cost is the API-priced cost Claude Code reports (/cost), not a bill. Nothing here is estimated.</footer>
 </main></div>
-<dialog id="export-dialog"><div class="dlg-head"><b>Export all</b><div class="dlg-actions"><button type="button" class="btn" id="export-raw-dlg">Raw data</button><button type="button" class="btn" id="export-pdf">PDF</button><button type="button" class="btn" id="export-md">Markdown</button><button type="button" class="btn" id="export-json">JSON</button><button type="button" class="btn" id="export-copy">Copy</button><button type="button" class="btn" id="export-close">Close</button></div></div><div class="dlg-body"><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label><label class="li"><input type="checkbox" id="with-titles"><span>Include session titles (the first words of each prompt)</span></label></div></dialog>
+<dialog id="export-dialog"><div class="dlg-head"><b>Export</b><button type="button" class="btn" id="export-close" aria-label="Close">✕</button></div><div class="dlg-body"><div class="xrows"><div class="xrow"><span>PDF <i>print the chosen sections</i></span><button type="button" class="btn" id="export-pdf">Download</button></div><div class="xrow"><span>Markdown <i>a short text report</i></span><button type="button" class="btn" id="export-md">Download</button></div><div class="xrow"><span>Raw data <i>everything the Board knows, for analysis</i></span><button type="button" class="btn" id="export-raw-dlg">Download</button></div></div><div class="stat-l">Sections to include</div><div id="export-list"></div><label class="li"><input type="checkbox" id="hide-names"><span>Hide project names</span></label><label class="li"><input type="checkbox" id="with-titles"><span>Include session titles (the first words of each prompt)</span></label></div></dialog>
 <dialog id="share-dialog"><div class="dlg-head"><b>Share card</b><div class="dlg-actions"><button type="button" class="btn" id="save-png">Save PNG</button><button type="button" class="btn" id="save-svg">Save SVG</button><button type="button" class="btn" id="share-close">Close</button></div></div><div class="dlg-body">${cardSvg(name)}</div></dialog>
 <script type="application/json" id="board-data">${json({ now, tasks, ...extra, brand: name })}</script>
 <script>${APP}</script></body></html>`

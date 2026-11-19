@@ -194,7 +194,8 @@ Always on, one rich level; the system "reduce motion" setting turns everything o
 - [x] Large numbers as K, M, B
 - [x] Last decisions can be sorted (with a Move column); plans of Chats are not counted
 - [x] The model and the cache share are read from the end of the transcript with node (grep is missing on Windows)
-- [ ] Mock-ups for fewer action buttons and for a stronger Share card, then build the chosen ones
+- [x] Header: Share menu (Share card, Copy summary) and an Export button; Export dialog with PDF, Markdown and Raw data rows (JSON removed)
+- [x] Share card as a poster: sessions as the big number, four figures and the period stream; shown whole in the dialog
 
 ## Decisions
 

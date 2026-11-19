@@ -26,7 +26,7 @@ export const SECTIONS_CSS = `
 #heat{overflow:visible}
 .page{display:none;flex-direction:column;gap:14px}.page.on{display:flex}
 .heat-head{margin-bottom:6px}.heat-body{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:32px;align-items:start}.heat-map{min-width:0}#heat{max-width:520px;margin:0 auto}.heat-side{min-width:0}.heat .heroes{margin-top:4px}
-.picker{position:relative}.picker .menu{left:0;right:auto;min-width:220px}.menu .note{padding:6px 10px;margin:0}
+.picker{position:relative}.picker .menu{left:0;right:auto;min-width:220px}.picker.share .menu{left:auto;right:0;min-width:170px}.xrows{margin-bottom:14px}.xrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.xrow i{display:block;font-style:normal;color:var(--muted);font-size:12px;margin-top:2px}.menu .note{padding:6px 10px;margin:0}
 @media (max-width:1100px){.heat-body{grid-template-columns:minmax(0,1fr)}}
 .kpis{margin-bottom:0}.chart-card,.sec{margin-bottom:0}
 .kpi>*{position:relative;z-index:1}.kpi::after{z-index:0}
@@ -375,17 +375,14 @@ function drawExtras() {
 
 // The numbers the share card carries beside the hero: projects, activity, reuse, router, plans and reviews.
 function cardTiles(list, cur) {
-  var cats = categorize(cur, EV, CFG).filter(function (p) { return p.name !== 'Chats' }), large = cats.filter(function (p) { return p.category === 'Large' }).length
-  var vals = perDay(list, days(84), METRICS.time.pick), active = vals.filter(function (v) { return v > 0 }).length, streak = 0, by = {}
+  var cats = categorize(cur, EV, CFG).filter(function (p) { return p.name !== 'Chats' })
+  var vals = perDay(list, days(84), METRICS.time.pick), active = vals.filter(function (v) { return v > 0 }).length, streak = 0
   for (var j = vals[83] > 0 ? 83 : 82; j >= 0 && vals[j] > 0; j--) streak++
-  cur.forEach(function (t) { var k = t.started.slice(0, 10); by[k] = (by[k] || 0) + t.agentMinutes })
-  var busiest = Object.keys(by).sort(function (a, b) { return by[b] - by[a] })[0], re = cur.filter(function (t) { return t.reuse != null }).map(function (t) { return t.reuse })
-  var ev = scopeEv(), r = routerStats(scopeAud(), ev), pl = planStats(ev, cats.filter(function (p) { return p.name !== 'Chats' }).map(function (p) { return p.name }), now), rs = runStats(ev, now)
+  var re = cur.filter(function (t) { return t.reuse != null }).map(function (t) { return t.reuse })
+  var pl = planStats(scopeEv(), cats.map(function (p) { return p.name }), now)
   function put(id, v) { byId(id).textContent = v }
-  put('c-projects', cats.length + (large ? ' · ' + large + ' large' : ''))
-  put('c-active', active + ' of 84 days'); put('c-streak', plural(streak, 'day')); put('c-busiest', busiest ? shortDate(busiest) + ' · ' + time(by[busiest] * 60000) : '–')
-  put('c-reuse', re.length ? Math.round(mean(re)) + '%' : '–'); put('c-router', r.total ? Math.round(r.stayed / r.total * 100) + '% kept' : '–')
-  put('c-plan', pl.velocity ? num1(pl.velocity) + ' items/day' : '–'); put('c-runs', rs.runs ? plural(rs.runs, 'run') : '–')
+  put('c-active', active + ' of 84 days'); put('c-streak', plural(streak, 'day'))
+  put('c-reuse', re.length ? Math.round(mean(re)) + '%' : '–'); put('c-plan', pl.velocity ? num1(pl.velocity) + ' items/day' : '–')
 }
 
 // The project switcher in the header, on every page: all projects, or one of the large ones.
@@ -488,7 +485,6 @@ function saveSection(id, fmt) {
   if (fmt === 'md') saveText(toMd(e), 'board-' + id + '.md', 'text/markdown')
   else if (fmt === 'csv') saveText(toCsv(e), 'board-' + id + '.csv', 'text/csv')
   else if (fmt === 'pdf') printIds([id])
-  else saveText(JSON.stringify({ scope: stamp(), section: e }, null, 2), 'board-' + id + '.json', 'application/json')
 }
 function copyText(text, btn, done) {
   function fallback() { var t = document.createElement('textarea'); t.value = text; document.body.append(t); t.select(); try { document.execCommand('copy') } catch (e) {} t.remove() }
@@ -500,13 +496,15 @@ function closeMenus() { document.querySelectorAll('.menu').forEach(function (m) 
 function wireExport() {
   document.querySelectorAll('[data-export]').forEach(function (btn) {
     var id = btn.getAttribute('data-export'), menu = h('div', 'menu'); menu.hidden = true
-    ;[['PDF', 'pdf'], ['Markdown', 'md'], ['CSV', 'csv'], ['JSON', 'json']].forEach(function (f) { var m = h('button', '', f[0]); m.type = 'button'; m.addEventListener('click', function () { menu.hidden = true; saveSection(id, f[1]) }); menu.append(m) })
+    ;[['PDF', 'pdf'], ['Markdown', 'md'], ['CSV', 'csv']].forEach(function (f) { var m = h('button', '', f[0]); m.type = 'button'; m.addEventListener('click', function () { menu.hidden = true; saveSection(id, f[1]) }); menu.append(m) })
     btn.parentNode.append(menu)
     btn.addEventListener('click', function (ev) { ev.stopPropagation(); var open = menu.hidden; closeMenus(); menu.hidden = !open })
   })
   document.addEventListener('click', closeMenus)
   document.querySelectorAll('[data-tab]').forEach(function (b) { b.addEventListener('click', function () { showPage(b.getAttribute('data-tab')) }) })
-  byId('export-raw').addEventListener('click', saveRaw)
+  var shareMenu = byId('share-menu')
+  byId('share-menu-btn').addEventListener('click', function (ev) { ev.stopPropagation(); var open = shareMenu.hidden; closeMenus(); shareMenu.hidden = !open })
+  shareMenu.addEventListener('click', function () { setTimeout(closeMenus, 900) })
   byId('export-raw-dlg').addEventListener('click', saveRaw)
   var saved = 'overview'
   try { saved = localStorage.getItem('ponytail-board-page') || 'overview' } catch (e) {}
@@ -522,7 +520,5 @@ function wireExport() {
   byId('export-close').addEventListener('click', function () { dlg.close() })
   byId('export-pdf').addEventListener('click', function () { dlg.close(); printIds(chosen()) })
   byId('export-md').addEventListener('click', function () { saveText(allMd(chosen(), byId('hide-names').checked), SLUG + '-board.md', 'text/markdown') })
-  byId('export-json').addEventListener('click', function () { var m = byId('hide-names').checked ? hideMap() : null, doc = { scope: stamp(m), sections: chosen().map(function (id) { return EXPORTS[id] }) }; saveText(JSON.stringify(m ? maskTree(doc, m) : doc, null, 2), SLUG + '-board.json', 'application/json') })
-  byId('export-copy').addEventListener('click', function (e) { copyText(allMd(chosen(), byId('hide-names').checked), e.target, 'Copied') })
 }
 `
