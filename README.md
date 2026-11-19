@@ -13,10 +13,10 @@
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Six add-ons collapse into one plugin, then a tour of the Board" width="760">
+  <a href="docs/demo.mp4"><img src="docs/demo.webp" alt="Six add-ons collapse into one plugin, then a tour of the Board" width="820"></a>
 </p>
 
-<p align="center"><sub>The first half minute of a one minute tour, recorded from the real Board with invented demo data. <a href="docs/demo.mp4">Watch the whole tour</a>.</sub></p>
+<p align="center"><sub>A one minute tour, recorded from the real Board with invented demo data. <a href="docs/demo.mp4">Open the full quality video</a>.</sub></p>
 
 ## One plugin instead of many
 
