@@ -206,6 +206,22 @@ Always on, one rich level; the system "reduce motion" setting turns everything o
 - [x] The Share card strip is two panels, cost and tokens per day, one rounded bar per day, each with its maximum and the date ends
 - [x] Export dialog is split: sections and options on the left, format cards and one Download button on the right
 
+### 15. Built-in model router (L)
+
+Port auto-model-router 0.9.2 into this mod, in Node, so it needs no separate install and no Python.
+
+- [x] Read the original (hooks, agents, skills, commands, tests) and decide what is ported
+- [x] Check what the test loader accepts: CommonJS cannot be imported, so the logic is ESM modules with no imports and the hook script is a thin CommonJS wrapper
+- [x] Classifier, decision, audit rows and waves as pure modules (`router-core.mjs`, `router-audit.mjs`, `router-waves.mjs`)
+- [x] Hook wrapper and disk helpers (`router-hook.js`, `router-io.js`), registered in `hooks.json`
+- [x] Differential test: 232 cases from the Python original in `tests/router-fixture.ts`, plus `scripts/router-differential.mjs` for end-to-end runs
+- [x] Ported unit tests: waves, audit rows, session usage, reconcile
+- [x] Agents `unified-band:router-*`, skills `auto-model-routing`, `plan-with-models`, `route`, `route-status`
+- [x] Guard: the hooks do nothing while the original plugin is enabled
+- [x] `LICENSE-ROUTER`, README Requirements, Credits and a Model router section
+- [ ] Run the hooks inside a real Claude Code session (not done in this stage)
+- [ ] `/router-report` and the Python report tools (left out on purpose)
+
 ## Decisions
 
 1. Project categories: option C (points), plus a page for every large project.
@@ -216,3 +232,4 @@ Always on, one rich level; the system "reduce motion" setting turns everything o
 6. Mock-ups are agreed. Copy summary, Export all and Share card form one group. Charts are smooth, bars fully rounded. Router shows a matrix "your model to chosen model" plus a table of the last decisions.
 
 Category thresholds stay tunable: look at your real data first, then fix them.
+7. Built-in router: the original plugin is detected through `enabledPlugins` and the built-in hooks step back; the audit log path and line format stay the original's.

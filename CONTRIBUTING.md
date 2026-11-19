@@ -32,9 +32,10 @@ node scripts/smoke-board.mjs out.html
 
 - Text the user sees in the band and in the Board is English.
 - A bug fix comes with a test that fails without the fix. New logic with branches gets one small test.
+- `tests/router-fixture.ts` is generated from the original Python router: after a change to the classifier or to `scripts/router-corpus.mjs`, run `node scripts/router-differential.mjs <original plugin folder>` (needs `python`), and add `--hooks` to compare the hook scripts end to end. Never edit the fixture by hand.
 - The Board page is one generated HTML file. Its script lives in strings inside the TypeScript files, so avoid backticks, `${` and backslashes inside those strings.
 - Never write a file by reading it, changing the text and writing it back without checking that the read worked: a failed read must not turn into an overwrite.
 
 ## Licence
 
-By contributing you agree that your changes are released under the MIT licence in `LICENSE`. `LICENSE-PONYTAIL` covers the code carried over from Ponytail.
+By contributing you agree that your changes are released under the MIT licence in `LICENSE`. `LICENSE-PONYTAIL` covers the code carried over from Ponytail and `LICENSE-ROUTER` the model router carried over from auto-model-router.
