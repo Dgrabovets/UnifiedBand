@@ -64,3 +64,38 @@ test('a broken board.json costs only the config, not the journal', async () => {
   expect(r.events.length).toBe(1)
   expect(r.config).toEqual({})
 })
+
+test('boardExtra counts decisions only, not the outcome rows the router writes beside them', async () => {
+  const decision = JSON.stringify({ ts: '2026-11-19T10:00:00+00:00', session_id: 's', decision: { parent: 'opus', model: 'haiku', tier: 'override' }, outcome: 'injected' })
+  const delegated = JSON.stringify({ ts: '2026-11-19T10:00:05+00:00', session_id: 's', decision_id: 'r_1', model: 'haiku', outcome: 'delegated', kind: 'router' })
+  const reconciled = JSON.stringify({ ts: '2026-11-19T10:00:09+00:00', session_id: 's', decision_id: 'r_1', model: 'haiku', outcome: 'auto_inline_unattributed' })
+  const $ = {
+    env: { get: async (name: string) => (name === 'CC_ROUTER_CACHE_DIR' ? '/r' : undefined) },
+    fs: {
+      list: async () => [],
+      read: async (path: string) => {
+        if (path === '/r/audit.jsonl') return [decision, delegated, reconciled].join('\n') + '\n'
+        throw new Error('missing')
+      },
+    },
+  } as never
+  const r = await boardExtra($)
+  expect(r.audit.length).toBe(1)
+  expect(r.audit[0]).toMatchObject({ parent: 'opus', model: 'haiku', outcome: 'injected' })
+})
+
+test('the router log is read from CC_ROUTER_CACHE_DIR when it is set', async () => {
+  const row = JSON.stringify({ ts: '2026-11-19T10:00:00+00:00', session_id: 's', decision: { parent: 'sonnet', model: 'sonnet' }, outcome: 'silent' }) + '\n'
+  const env: Record<string, string> = { XDG_CONFIG_HOME: '/cfg', HOME: '/home', CC_ROUTER_CACHE_DIR: '/elsewhere' }
+  const $ = {
+    env: { get: async (name: string) => env[name] },
+    fs: {
+      list: async () => [],
+      read: async (path: string) => {
+        if (path === '/elsewhere/audit.jsonl') return row
+        throw new Error('missing')
+      },
+    },
+  } as never
+  expect((await boardExtra($)).audit.length).toBe(1)
+})

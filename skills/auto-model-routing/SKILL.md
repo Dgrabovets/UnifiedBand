@@ -1,0 +1,172 @@
+---
+name: auto-model-routing
+description: Use whenever an `AUTO-ROUTE` instruction with a `<router-decision>` block is present in injected context (emitted by the auto-router UserPromptSubmit hook). The hook has already decided the routed model is strictly cheaper than this session — your only job is to dispatch to the named `unified-band:router-<model>` worker with a cold-start brief and verify the result.
+---
+
+# auto-model-routing
+
+You are running as a **router parent**. The model router's UserPromptSubmit
+hook (`router-hook.js prompt`) classified the user's prompt and, when a cheaper model can do the work,
+injected an `AUTO-ROUTE` instruction plus a `<router-decision>` block into your
+context. This skill tells you how to honour it.
+
+## What the hook already decided
+
+The hook reads the parent session's own model off the transcript and only
+injects when the routed tier is **strictly cheaper** than yours
+(`haiku < sonnet < opus < fable`). A same-or-higher pick emits nothing, so you
+never see a decision block you should ignore on cost grounds. `band` is only
+`auto` (an AUTO-ROUTE block is present) or `none` (no block). The hook stays
+silent for harness events (task notifications, scheduled-task runs), short
+follow-ups, short lookups, a project's `default_model` pick, and any
+`router.json` rule that is not cheaper than you. Only an inline `#model=` tag
+may route up. A context-budget warning line rides along only at ≥600k input
+tokens.
+
+The injection looks like this — it names the worker and points here; the
+procedure (cold-start brief, verify, escalate) is below:
+
+```
+AUTO-ROUTE: Agent(subagent_type="unified-band:router-sonnet") per auto-model-routing skill.
+<router-decision>{"decision_id":"r_...","model":"sonnet","effort":"medium","band":"auto","parent":"opus","ctx":42}</router-decision>
+```
+
+The `<router-decision>` block carries `decision_id`, `model`, `effort`, `band`
+(always `auto` when present), `parent`, and `ctx` (input tokens ÷ 1000). The
+prose line can carry two extra directives: a `fanout:` clause and a ≥600k
+budget line.
+
+## Procedure
+
+```
+IN PLAN MODE?              → don't delegate; use plan-with-models — FIRST CHECK
+AUTO-ROUTE + fanout clause → Branch E: decompose + one message of parallel dispatches
+AUTO-ROUTE (no fanout)     → Branch A: dispatch to unified-band:router-<model>
+no AUTO-ROUTE block        → Branch C: do the work yourself, log nothing
+```
+
+**Plan mode is parent-authoritative — check it FIRST.** If your context says
+plan mode is active (a system reminder, or the hook's
+`[auto-router] plan mode: use the plan-with-models skill` line), invoke the
+`plan-with-models` skill and let it own the plan. Do not delegate the planning
+itself — planning is the parent's job; `plan-with-models` then executes the
+plan as parallel waves, one `unified-band:router-<model>` agent per step.
+
+### Branch A — dispatch to the named worker
+
+1. Dispatch via the `Agent` tool:
+   - `subagent_type`: **always** the namespaced form
+     `unified-band:router-<model>` (e.g. `unified-band:router-sonnet`).
+     The bare un-namespaced form fails with "Agent type not found."
+   - `description`: short (3-5 word) summary of the task.
+   - `prompt`: the verbatim user request **plus a 3-5 line cold-start brief**.
+     The worker starts cold with none of your context, so include:
+     - files touched so far (paths, and what changed);
+     - decisions and constraints already settled this session;
+     - the user's verbatim request.
+2. While the worker runs, don't duplicate work on the **same** subtask. (You
+   may fan out across **independent** subtasks — that is Branch E.)
+3. **On return, verify with ONE cheap check** — not a full re-review:
+   - `git diff --stat` (or `git -C <dir> diff --stat`) to confirm the expected
+     files changed, or
+   - run the test/command the task named, or
+   - one ranged `Read` of the specific edited region.
+4. If the check shows the result is wrong or the worker returned
+   `Stopped: …`, **re-dispatch one tier up** with the failure note appended
+   (`haiku → sonnet → opus → fable`). See Escalation.
+5. Relay the worker's result to the user in **1–2 sentences** (plus any direct
+   artifact URLs). Do not paraphrase its entire output.
+
+### Branch C — no AUTO-ROUTE block
+
+No block means the hook decided routing buys nothing (same-or-higher tier, a
+follow-up, a short lookup, a project default, an opt-out, or below the route
+floor). Just do the work yourself on the current session model. Log nothing.
+
+### Branch E — fanout
+
+The `AUTO-ROUTE` line carries a `fanout:` clause: the prompt decomposes into
+independent subtasks (a numbered list, "X and Y and Z", "for each…"). Fan out
+instead of doing them serially:
+
+1. **Decompose** into the smallest independent subtasks. For each, name the
+   files it will **write** (if any).
+2. **Classify each** to the cheapest sufficient model — most list items are
+   `unified-band:router-haiku` (a read, a one-file edit) or
+   `unified-band:router-sonnet`; reserve `unified-band:router-opus`
+   for the genuinely hard one.
+3. **Check non-interference** (same rule as `plan-with-models`):
+   - Read-only subtasks → always safe together.
+   - Writers → together only if their write-file sets are **disjoint**.
+   - Overlapping writers → separate messages (serialize), or
+     `isolation: "worktree"` + merge if they must be concurrent.
+4. **Dispatch each conflict-free batch as ONE message** of multiple `Agent()`
+   calls (the harness runs them concurrently). Prefix each `description` with
+   `[grp:<id>]` (shared per batch) so outcome capture can measure the fan-out.
+5. **Synthesize**: integrate the returns and report to the user in **1–2
+   sentences** total — not one summary per agent.
+
+When **not** to fan out: the subtasks depend on each other sequentially, or
+it's really one task dressed up with conjunctions ("read the file **and** tell
+me what it does" is one task). When in doubt, single dispatch.
+
+## Escalation
+
+Each worker ends with one of:
+
+- `Done: …` (+ a `Files changed:` list) — success; verify, relay, stop.
+- `Done with caveats: …` — success with a flagged concern; relay both.
+- `Stopped: too complex for <model> tier. Reason: <why>. Suggest re-dispatch
+to router-<higher>.` — explicit escalation.
+
+On `Stopped:` **don't ask the user** — re-dispatch one tier up
+(`haiku → sonnet → opus → fable`), reusing the worker's suggested prompt if it
+gave one, else the original prompt prefixed with `Previous <model> attempt
+stopped: <reason>. Continue from there.` If the verify check (Branch A step 3)
+fails, treat it the same way: retry once at the same tier with a clearer
+prompt, then escalate one tier up. If even the top tier fails, handle the
+prompt inline and surface the failure with a suggested manual next step. Never
+silently swallow a worker failure.
+
+## Overriding the router
+
+Trust the user's intent above the classifier. If they said `do it yourself` /
+`don't delegate` / `stay on <model>`, do that. Force-routing via an inline
+`#model=opus|sonnet|haiku|fable` tag is honoured (the hook emits `band=auto,
+confidence=1.0`, and dispatches even to a dearer model since only the human can
+change the session's own model). A `router.json` rule gets no such exemption —
+it routes only when its model is cheaper than yours. If the user is
+mid-iteration on the current model, prefer staying inline — the worker lacks
+that context.
+
+## Outcome logging
+
+The hooks handle it; you log nothing by hand. The PostToolUse hook
+(`router-hook.js post-agent`) records every `unified-band:router-*` dispatch
+automatically (outcome `delegated`, tokens, wall time, `agent_id`,
+`decision_id`, `group_id`); the SubagentStop hook (`subagent`) adds the
+finished background worker's usage (outcome `worker_usage`); and the Stop hook
+(`reconcile`) reconciles inline turns. The Board's Model Router section reads
+that audit — do not duplicate or hand-tune it here.
+
+## Failure modes to avoid
+
+- **Don't paraphrase the agent's output** — relay the substantive result, not
+  "I dispatched an agent and it did X."
+- **Don't start work in parallel with the agent** on the same subtask.
+- **Don't skip the verify step** — one cheap check catches a bad dispatch
+  before you relay it.
+- **Always use the namespaced `unified-band:router-<model>` form.** Bare
+  names fail with "Agent type not found."
+
+## How to invoke the worker
+
+| Model  | subagent_type                     | Use for                                                            |
+| ------ | --------------------------------- | ------------------------------------------------------------------ |
+| haiku  | `unified-band:router-haiku`  | Bulk mechanical work, quick edits (explicit dispatch only)         |
+| sonnet | `unified-band:router-sonnet` | Routine refactors, doc/spec writing, prototype iteration           |
+| opus   | `unified-band:router-opus`   | Deep refactors, architecture, hard debugging, multi-file synthesis |
+| fable  | `unified-band:router-fable`  | Frontier-stakes synthesis, irreversible steps (manual/override)    |
+
+The dispatched agent inherits the parent's working directory and project-level
+`CLAUDE.md` / `AGENTS.md`.

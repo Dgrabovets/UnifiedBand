@@ -3,7 +3,7 @@
 [![CI](https://github.com/Dgrabovets/UnifiedBand/actions/workflows/ci.yml/badge.svg)](https://github.com/Dgrabovets/UnifiedBand/actions/workflows/ci.yml) [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 
 
-Ponytail (mode, skills, task tracking and board) merged with one band above the Claude Code prompt, in a single mod.
+Ponytail (mode, skills, task tracking and board) and the model router merged with one band above the Claude Code prompt, in a single mod.
 
 ## What it shows
 
@@ -18,12 +18,30 @@ Project Completion is the share of checked boxes in a Markdown checklist (`- [x]
 ## Requirements
 
 - Claude Code with mod support (hooks modules).
-- Node.js on PATH (the mode hooks are Node scripts).
+- Node.js 18 or later on PATH (the mode and router hooks are Node scripts; there is no Python dependency).
 - Disable the original Ponytail plugin: this mod contains its code, and both together double every hook.
+- The model router is built in, so the separate `auto-model-router` plugin is no longer needed. If it is still enabled, the built-in router steps back (see "Model router").
 
 ## Credits
 
 The mode, skills, hooks, task tracking and board come from [Ponytail](https://github.com/DietrichGebert/PonyTail) by DietrichGebert (MIT, see `LICENSE-PONYTAIL`). Changes: the state key and skill namespace are `unified-band`, the band is redrawn, and the mode tracker also answers `/unified-band:ponytail`.
+
+The model router (classifier, hooks, worker agents, the routing and planning skills, `/route` and `/route-status`) comes from [auto-model-router](https://github.com/IuriiTurok/auto-model-router) 0.9.2 by iuriiturok (MIT, see `LICENSE-ROUTER`). Changes: the Python hooks are rewritten in Node, the workers and skills are named `unified-band:...`, and the report tooling is left out (see "Model router").
+
+## Model router
+
+A prompt hook classifies every prompt (tier and effort) with heuristics. When the chosen tier is strictly cheaper than the session's own model, the prompt is delegated to a worker agent (`unified-band:router-haiku`, `-sonnet`, `-opus`, `-fable`). Plan-mode and multi-part prompts fan out in parallel waves that never write the same file (skills `auto-model-routing` and `plan-with-models`). Hooks on Agent calls, subagent stops and turn ends write the outcomes to `~/.claude/cache/router/audit.jsonl`, the same log and line format the original wrote; the band and the Board read it.
+
+- Skills: `/unified-band:route <prompt>` shows how a prompt classifies, `/unified-band:route-status` lists recent decisions.
+- Russian: unlike the original, which knew English words only, the classifier also reads Russian task words (rewrite, refactor, implement, design, investigate, "show me", "for each" and so on), so a hard Russian task is not mistaken for a moderate one. `tests/router-russian.test.ts` keeps the rule that a Russian prompt gets the decision of its English translation.
+- Opt out: add `#noshift` or `#noroute` to a prompt, set `CC_ROUTER_DISABLE=1`, or put `{"disabled": true}` in `router.json`. `#model=haiku|sonnet|opus|fable` forces a worker. Rules and a default model go in `.claude/router.json` (project) or `~/.claude/router.json` (global): `{"default_model": "sonnet", "rules": [{"match": "typo", "model": "haiku", "reason": "cheap"}]}`. A rule with `"regex": true` is a JavaScript regular expression now.
+- Shadow mode: `CC_ROUTER_SHADOW=1` or `{"shadow": true}` in `router.json` logs what the router would do and changes nothing; the Board shows those rows as "would route".
+- Two guards beyond the original: a prompt that points back at earlier turns ("that function we discussed", "as before") or pastes a failure (a stack trace, a compiler error) stays on your model, because a cheaper worker would start without that context. `#model=` is never held back by them.
+- Settings by environment: `CC_ROUTER_CACHE_DIR`, `CC_ROUTER_GLOBAL_CONFIG`, `CC_ROUTER_ROUTE_FLOOR`, `CC_ROUTER_CTX_WARN`, `CC_ROUTER_AUDIT_MAX_BYTES`, `CC_ROUTER_AUDIT_RETAIN_DAYS`. The cache folder is under `CLAUDE_CONFIG_DIR` when that is set, else `~/.claude`.
+- **Both installed:** when the original `auto-model-router` plugin is enabled (`enabledPlugins` in the user, project or local settings), every router hook here does nothing and the original keeps working, so nothing runs twice. Disable it to switch to the built-in router.
+- Not ported: `/router-report`, `tools/usage-report.py`, `tools/analyze-audit.py`, `tools/replay_session_pivot.py`, `bin/cc-route` and the price table. They are reporting and launcher tools built on 1,500 lines of Python; the Board's Model Router page covers the decisions and the estimated savings.
+
+The classifier is checked against the Python original: `tests/router-fixture.ts` holds 232 prompt cases generated from it, and `node scripts/router-differential.mjs <original plugin folder> --hooks` runs both implementations end to end.
 
 ## Board
 
@@ -71,6 +89,7 @@ Built and tested on Claude Code 2.1.302. The band above the prompt needs a build
 
 ## Known limits
 
+- The router hooks are tested outside Claude Code (scripted payloads against the original), not inside a live session, and `${CLAUDE_PLUGIN_ROOT}` in the `route` skills is not verified on every build.
 - The panel covers Ponytail's own row only after it has drawn once. If you see two panels after a reload, the cover hook did not run on your build.
 - Buttons are text only: the `Button` element has no icon prop.
 - The Board button builds and opens `~/.config/ponytail/band/board.html` from what has been recorded so far; before the first finished turn it shows an empty page.

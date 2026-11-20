@@ -99,7 +99,7 @@ body{background:#fff}footer{display:none}
 `
 
 export const SECTIONS_JS = `
-var EV = D.events || [], AUD = D.audit || [], CFG = D.config || {}
+var EV = D.events || [], AUD = D.audit || [], WK = D.workers || [], CFG = D.config || {}
 var C = { blue: '#6cb4f0', purple: '#b07cf0', green: '#4fc88e', amber: '#f0a050', red: '#e0605a', pink: '#e0709a', teal: '#3cc4b0', yellow: '#f0c85a' }
 var NL = String.fromCharCode(10), NBSP = String.fromCharCode(160), EXPORTS = {}, uid = 0, sessionProject = {}
 var CATS = [['Large', C.red], ['Medium', C.amber], ['Small', C.green], ['Chat', C.blue]]
@@ -108,6 +108,7 @@ function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s }
 function sinceMs() { return state.period ? now - state.period * DAY : 0 }
 function scopeEv() { return EV.filter(function (e) { return e.ts >= sinceMs() && (!state.project || e.project === state.project) }) }
 function scopeAud() { return AUD.filter(function (r) { return r.ts >= sinceMs() && (!state.project || sessionProject[r.session] === state.project) }) }
+function scopeWk() { return WK.filter(function (r) { return r.ts >= sinceMs() && (!state.project || sessionProject[r.session] === state.project) }) }
 function scopeTasks() { return inDays(scope(), days(span())) }
 function labelOf(name) { var o = (CFG.projects || {})[name]; return o && o.label ? o.label : name }
 function pct(v) { return v == null ? '–' : Math.round(v) + '%' }
@@ -283,12 +284,14 @@ function drawReuse() {
 }
 
 // ---- model router ---------------------------------------------------------------------------------------------------
+var HINTS = { refers_back_inline: 'points back at earlier turns', pasted_failure_inline: 'pasted failure', same_or_higher_inline: 'not cheaper than your model', followup_inline: 'short follow-up', shadow: 'shadow mode' }
 function drawRouter() {
   var rows = scopeAud()
   if (!rows.length) return emptyBody('router', 'Model Router', 'No router decisions in this period. The router logs one line per classified prompt.')
   var b = byId('b-router'); b.textContent = ''
   var ev = scopeEv(), r = routerStats(rows, ev), models = ofType(ev, 'model')
-  if (r.total >= 5 && r.routed === 0) b.append(h('div', 'alert', 'The router stayed silent for all ' + r.total + ' classified prompts: every one stayed on the model you were on.'))
+  if (r.shadow) b.append(h('div', 'alert', 'Shadow mode: the router logged ' + r.shadow + ' decisions it would have made and changed nothing.'))
+  else if (r.total >= 5 && r.routed === 0) b.append(h('div', 'alert', 'The router stayed silent for all ' + r.total + ' classified prompts: every one stayed on the model you were on.'))
   var head = h('tr'); head.append(h('th', 'r'))
   r.order.forEach(function (m) { head.append(h('th', '', cap(m))) }); head.append(h('th', '', 'Total'))
   var body = h('tbody'), TINT = { haiku: C.green, sonnet: C.blue, opus: C.purple }
@@ -308,7 +311,7 @@ function drawRouter() {
     row('stats4', [stat('Saved, est.', money(r.saved), 'from down hops'), stat('Extra, est.', '+' + money(r.extra), 'from up hops'), stat('Avg confidence', r.avgConf == null ? '–' : (Math.round(r.avgConf * 100) / 100).toFixed(2), 'classifier score'), stat('Corrected by you', String(r.corrected), 'of ' + r.routed + ' routed')]))
   var last = panel('Last decisions', 'Click a column to sort. Sort by Move to see why the router changed the model.'), t = h('table', 'dt'), th = h('tr')
   var rank = function (m) { return r.order.indexOf(modelKey(m)) }, EFFORT = ['low', 'medium', 'high', 'xhigh', 'max']
-  var fixed = function (x) { return x.outcome !== 'silent' && models.some(function (m) { return m.session === x.session && m.ts > x.ts && m.ts - x.ts < 600000 }) }
+  var fixed = function (x) { return x.outcome !== 'silent' && x.outcome !== 'shadow' && models.some(function (m) { return m.session === x.session && m.ts > x.ts && m.ts - x.ts < 600000 }) }
   var sortKey = function (x, k) { return k === 'ts' ? x.ts : k === 'parent' ? rank(x.parent) : k === 'model' ? rank(x.model) : k === 'move' ? rank(x.model) - rank(x.parent) : k === 'effort' ? EFFORT.indexOf(x.effort) : k === 'outcome' ? (fixed(x) ? 2 : x.outcome === 'silent' ? 0 : 1) : String(x.reason || '') }
   ;[['When', 'ts'], ['You were on', 'parent'], ['Sent to', 'model'], ['Move', 'move'], ['Effort', 'effort'], ['Outcome', 'outcome'], ['Why', 'reason']].forEach(function (c) {
     var on = state.rsort.k === c[1], cell = h('th', ''), btn = h('button', 'th-btn' + (on ? ' on' : ''), c[0] + (on ? (state.rsort.d > 0 ? ' ▲' : ' ▼') : '')); btn.type = 'button'
@@ -319,12 +322,18 @@ function drawRouter() {
   rows.slice().sort(function (a, c) { var x = sortKey(a, state.rsort.k), y = sortKey(c, state.rsort.k); return (x < y ? -1 : x > y ? 1 : c.ts - a.ts) * state.rsort.d }).slice(0, 10).forEach(function (x) {
     var fix = fixed(x), mv = rank(x.model) - rank(x.parent), tr = h('tr'), out = tr.appendChild(h('td'))
     tr.prepend(h('td', '', ago(x.ts)), h('td', '', cap(modelKey(x.parent))), h('td', '', cap(modelKey(x.model))), h('td', '', mv > 0 ? '↑ up' : mv < 0 ? '↓ down' : 'same'), h('td', '', x.effort || '–'))
-    out.append(tag(fix ? 'you switched back' : x.outcome === 'silent' ? 'kept' : 'routed', fix ? 'warn' : x.outcome === 'silent' ? '' : 'ok')); tr.append(h('td', 'why', x.reason || ''))
+    out.append(tag(fix ? 'you switched back' : x.outcome === 'shadow' ? 'would route' : x.outcome === 'silent' ? 'kept' : 'routed', fix ? 'warn' : x.outcome === 'silent' || x.outcome === 'shadow' ? '' : 'ok')); tr.append(h('td', 'why', (HINTS[x.hint] ? HINTS[x.hint] + ' · ' : '') + (x.reason || '')))
     tb.append(tr)
   })
   last.append(t, h('div', 'note', 'The router logs your model, the chosen model, effort, outcome and reason. A /model within ten minutes of a routed prompt counts as a correction.'))
-  b.append(matrix, last)
-  setExport('router', 'Model Router', ['You were on', 'Sent to', 'Count'], Object.keys(r.matrix).map(function (k) { var p = k.split('>'); return [cap(p[0]), cap(p[1]), String(r.matrix[k])] }).concat([['Saved, est.', '', money(r.saved)], ['Extra, est.', '', money(r.extra)], ['Corrected by you', '', String(r.corrected)]]))
+  var rep = routerReport(rows, scopeWk(), ev), secs = function (ms) { return ms == null ? '–' : ms < 60000 ? Math.round(ms / 1000) + 's' : dur(Math.round(ms / 60000)) }
+  var wtok = Object.keys(rep.workers.tokens).map(function (k) { return cap(k) + ' ' + tok(rep.workers.tokens[k].input + rep.workers.tokens[k].output) }).join(' · ')
+  var report = panel('Router report', 'The three goals of the original router report, from your own log.',
+    row('stats4', [stat('Cost', money(r.saved - r.extra), 'saved net, est.', r.saved >= r.extra ? C.green : C.red), stat('Corrected', pct(rep.sent.fixedPct) + ' / ' + pct(rep.kept.fixedPct), 'routed / kept prompts'), stat('Time to result', secs(rep.sent.ms) + ' / ' + secs(rep.kept.ms), 'routed / kept, first turn'), stat('Workers', String(rep.workers.launched), rep.workers.failed ? rep.workers.failed + ' failed' : wtok || 'none launched')]),
+    row('leg', Object.keys(rep.tiers).sort(function (a, c) { return rep.tiers[c] - rep.tiers[a] }).map(function (k) { return h('span', '', cap(k) + ': ' + rep.tiers[k]) }).concat(rep.fanout ? [h('span', '', 'Fan-out: ' + rep.fanout)] : [])),
+    rep.tips.length ? row('tips', rep.tips.map(function (x) { return h('div', 'note', x) })) : h('div', 'note', 'Nothing to change yet: the log shows no pattern that needs a rule.'))
+  b.append(matrix, report, last)
+  setExport('router', 'Model Router',['You were on', 'Sent to', 'Count'], Object.keys(r.matrix).map(function (k) { var p = k.split('>'); return [cap(p[0]), cap(p[1]), String(r.matrix[k])] }).concat([['Saved, est.', '', money(r.saved)], ['Extra, est.', '', money(r.extra)], ['Corrected by you', '', String(r.corrected)], ['Corrected, routed', '', pct(rep.sent.fixedPct)], ['Corrected, kept', '', pct(rep.kept.fixedPct)], ['Workers launched', '', String(rep.workers.launched)]].concat(rep.tips.map(function (x) { return ['Tip', '', x] }))))
 }
 
 // ---- plans ----------------------------------------------------------------------------------------------------------
@@ -438,13 +447,13 @@ function rawData() {
       return o
     }),
     events: EV.map(function (e) { var o = {}; for (var k in e) if (k !== 'root') o[k] = e[k]; return o }),
-    router: AUD, summary: summary
+    router: AUD, workers: WK, summary: summary
   }
   // Only what the ticked sections draw on: the ledger for Overview, Projects, Reuse and Extras; the journal for most others; the router log for Router.
   out.sections = ids
   if (!has('overview', 'projects', 'reuse', 'extras')) delete out.tasks
   if (!has('context', 'reuse', 'router', 'plans', 'runs', 'extras')) delete out.events
-  if (!has('router')) delete out.router
+  if (!has('router')) { delete out.router; delete out.workers }
   if (byId('hide-names').checked) { var m = hideMap(); out = maskTree(out, m); out.config = maskTree(CFG, m, true); out.scope = stamp(m) }
   return JSON.stringify(out, null, 1)
 }

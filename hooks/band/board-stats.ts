@@ -116,7 +116,7 @@ const MODEL_ORDER = ['haiku', 'sonnet', 'opus']
 const PRICE = { haiku: 0.3, sonnet: 6, opus: 12 }
 export function modelKey(s) { s = String(s || '').toLowerCase(); for (var i = 0; i < MODEL_ORDER.length; i++) if (s.indexOf(MODEL_ORDER[i]) >= 0) return MODEL_ORDER[i]; return s || 'unknown' }
 export function routerStats(rows, events) {
-  var order = MODEL_ORDER.slice(), matrix = {}, stayed = 0, up = 0, down = 0, routed = 0, corrected = 0, saved = 0, extra = 0, conf = []
+  var order = MODEL_ORDER.slice(), matrix = {}, stayed = 0, up = 0, down = 0, routed = 0, shadow = 0, corrected = 0, saved = 0, extra = 0, conf = []
   rows.forEach(function (r) { [modelKey(r.parent), modelKey(r.model)].forEach(function (m) { if (order.indexOf(m) < 0) order.push(m) }) })
   var turns = bySession(ofType(events, 'turn')), models = bySession(ofType(events, 'model'))
   rows.forEach(function (r) {
@@ -126,6 +126,7 @@ export function routerStats(rows, events) {
     if (d === 0) stayed++; else if (d > 0) up++; else down++
     if (r.conf) conf.push(r.conf)
     if (r.outcome === 'silent') return
+    if (r.outcome === 'shadow') { shadow++; return }
     routed++
     if ((models[r.session] || []).some(function (m) { return m.ts > r.ts && m.ts - r.ts < 600000 })) corrected++
     // The turn that followed the decision: its cost times the price ratio is what the hop saved or added.
@@ -136,7 +137,40 @@ export function routerStats(rows, events) {
       if (change < 0) saved += -change; else extra += change
     }
   })
-  return { order: order, matrix: matrix, total: rows.length, stayed: stayed, up: up, down: down, routed: routed, corrected: corrected, saved: saved, extra: extra, avgConf: mean(conf) }
+  return { order: order, matrix: matrix, total: rows.length, stayed: stayed, up: up, down: down, routed: routed, shadow: shadow, corrected: corrected, saved: saved, extra: extra, avgConf: mean(conf) }
+}
+
+// The router report: the three goals of the original /router-report, from the audit log and the journal.
+// Cost is routerStats' saved and extra; this adds quality (corrections, routed against kept), time (first turn after a decision), workers and tips.
+export function routerReport(rows, workers, events) {
+  var turns = bySession(ofType(events, 'turn')), models = bySession(ofType(events, 'model'))
+  var kept = { n: 0, fixed: 0, ms: [] }, sent = { n: 0, fixed: 0, ms: [] }, tiers = {}, fanout = 0, catchAll = 0
+  rows.forEach(function (r) {
+    var g = r.outcome === 'silent' || r.outcome === 'shadow' ? kept : sent
+    g.n++
+    tiers[r.tier || 'unknown'] = (tiers[r.tier || 'unknown'] || 0) + 1
+    if (r.fanout) fanout++
+    if (/moderate scope/.test(String(r.reason || ''))) catchAll++
+    if ((models[r.session] || []).some(function (m) { return m.ts > r.ts && m.ts - r.ts < 600000 })) g.fixed++
+    var next = (turns[r.session] || []).filter(function (t) { return t.ts > r.ts && t.ms > 0 })[0]
+    if (next) g.ms.push(next.ms)
+  })
+  var launched = 0, failed = 0, done = 0, tok = {}, dur = []
+  workers.forEach(function (w) {
+    if (w.outcome === 'worker_usage') {
+      done++
+      var k = modelKey(w.actual || w.model), t = tok[k] = tok[k] || { input: 0, output: 0 }
+      t.input += w.input || 0; t.output += w.output || 0
+    } else { launched++; if (w.outcome === 'delegated_failed') failed++; if (w.ms) dur.push(w.ms) }
+  })
+  var pct = function (a, b) { return b ? Math.round(a / b * 100) : null }
+  var tips = []
+  if (rows.length >= 10 && sent.n === 0) tips.push('Nothing was routed in ' + rows.length + ' prompts. If that is not what you want, add a rule to .claude/router.json for the tasks you do most often.')
+  if (rows.length >= 10 && catchAll / rows.length >= 0.7) tips.push(Math.round(catchAll / rows.length * 100) + '% of decisions fall in the catch-all "moderate scope" tier, so the classifier has little to go on. Rules in .claude/router.json for your usual tasks give it more.')
+  if (sent.n >= 5 && kept.n >= 5 && pct(sent.fixed, sent.n) - pct(kept.fixed, kept.n) >= 20) tips.push('You correct routed prompts more often (' + pct(sent.fixed, sent.n) + '%) than kept ones (' + pct(kept.fixed, kept.n) + '%). Consider a stronger model for the tier that was corrected most.')
+  if (failed > 0) tips.push(failed + ' of ' + launched + ' delegated workers failed. Read their reply in the transcript before trusting the route.')
+  if (fanout > 0 && launched === 0) tips.push('Fan-out was suggested ' + fanout + ' time' + (fanout > 1 ? 's' : '') + ' but no worker was launched.')
+  return { total: rows.length, tiers: tiers, fanout: fanout, kept: { n: kept.n, fixedPct: pct(kept.fixed, kept.n), ms: median(kept.ms) }, sent: { n: sent.n, fixedPct: pct(sent.fixed, sent.n), ms: median(sent.ms) }, workers: { launched: launched, failed: failed, done: done, tokens: tok, ms: median(dur) }, tips: tips }
 }
 
 // ---- plans ----------------------------------------------------------------------------------------------------------
@@ -273,6 +307,7 @@ export const STATS_SRC = [
   String(reuseStats),
   String(modelKey),
   String(routerStats),
+  String(routerReport),
   String(planStats),
   String(runStats),
   String(projectEntry),

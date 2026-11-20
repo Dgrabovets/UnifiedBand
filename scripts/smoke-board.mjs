@@ -44,7 +44,7 @@ if (process.env.STREAK) {
 }
 
 // A synthetic journal over three weeks, three projects, so every section has something to draw.
-const events = [], audit = []
+const events = [], audit = [], workers = []
 let seed = 7
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
 const projects = ['Steward', 'SipAndTell', 'UnifiedBand']
@@ -67,6 +67,7 @@ projects.forEach((project, pi) => {
       if (i % 6 === 0) events.push({ t: 'prompt', ts, session, project, words: 3, neg: rnd() < 0.15 })
       if (i % 8 === 3) {
         audit.push({ ts, session, parent: 'sonnet', model: ['sonnet', 'opus', 'haiku'][i % 3], effort: 'low', tier: 'standard', conf: 0.6 + rnd() * 0.3, outcome: i % 3 ? 'routed' : 'silent', reason: 'moderate scope' })
+        if (i % 3 === 1) { workers.push({ ts: ts + MIN, session, outcome: 'delegated', model: 'sonnet', ms: 40000 + i * 900 }, { ts: ts + 2 * MIN, session, outcome: 'worker_usage', model: 'sonnet', actual: 'claude-sonnet-5-5', input: 30000 + i * 700, output: 4000 + i * 90 }) }
         if (i % 3 === 1 && rnd() < 0.4) events.push({ t: 'model', ts: ts + 2 * MIN, session, project, arg: 'sonnet' })
       }
     }
@@ -75,7 +76,7 @@ projects.forEach((project, pi) => {
 })
 
 // REAL=1 swaps the synthetic journal for the real one: what the mod's boardExtra reads.
-let extra = { events, audit, config: { projects: { SipAndTell: { label: 'Sip & Tell' } } } }
+let extra = { events, audit, workers, config: { projects: { SipAndTell: { label: 'Sip & Tell' } } } }
 if (process.env.REAL) {
   const realEvents = readdirSync(dir).filter(f => /^events-\d{4}-\d{2}(-\d{2}-[\w-]+)?\.jsonl$/.test(f)).sort().flatMap(f => readFileSync(join(dir, f), 'utf8').split('\n').flatMap(l => { try { return l ? [JSON.parse(l)] : [] } catch { return [] } }))
   let realAudit = []
@@ -129,6 +130,7 @@ const document = {
 const ctx = { document, window: { addEventListener() {}, scrollTo() {} }, localStorage: { getItem: () => null, setItem() {} }, navigator: {}, URL: { createObjectURL: () => '' }, Blob: class {}, XMLSerializer: class { serializeToString() { return '' } }, Image: class {}, setTimeout, clearTimeout, console, Math, JSON, Date, Array, Set, Object, String, Number }
 const scripts = html.split('<script>')
 const app = scripts[scripts.length - 1].split('</script>')[0]
+if (process.env.DUMP) (await import('node:fs')).writeFileSync(process.env.DUMP, app)
 try {
   runInNewContext(app, ctx)
 } catch (e) {
