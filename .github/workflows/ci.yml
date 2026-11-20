@@ -24,7 +24,7 @@ jobs:
 
       # Node 24: the smoke script needs 22.15 or later (type stripping and module hooks).
       - name: Set up Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
 
