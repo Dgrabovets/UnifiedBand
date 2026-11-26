@@ -43,6 +43,10 @@ jobs:
       - name: Check the router hooks
         run: node scripts/router-edge.mjs
 
+      # Runs the ledger repair the way hooks.json does, on a throwaway ledger.
+      - name: Check the ledger repair
+        run: node scripts/repair-check.mjs
+
       # Builds the Board page from synthetic data and runs its script against a stand-in DOM.
       - name: Smoke-test the Board page
         run: node scripts/smoke-board.mjs "$RUNNER_TEMP/board.html"

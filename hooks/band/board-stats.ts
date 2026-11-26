@@ -111,12 +111,14 @@ export function reuseStats(tasks, turns) {
 }
 
 // ---- model router ---------------------------------------------------------------------------------------------------
-const MODEL_ORDER = ['haiku', 'sonnet', 'opus']
+const MODEL_ORDER = ['haiku', 'sonnet', 'opus', 'fable']
 // Rough blended price per million tokens (input and output averaged), enough to rank a hop as cheaper or dearer.
-const PRICE = { haiku: 0.3, sonnet: 6, opus: 12 }
-export function modelKey(s) { s = String(s || '').toLowerCase(); for (var i = 0; i < MODEL_ORDER.length; i++) if (s.indexOf(MODEL_ORDER[i]) >= 0) return MODEL_ORDER[i]; return s || 'unknown' }
+// The 5.5 prices of hooks/ponytail-band-import.js; Fable 5.2 as agents/router-fable.md states it ($8 and $40).
+const PRICE = { haiku: 0.3, sonnet: 6, opus: 12, fable: 24 }
+// The one place a model id becomes a family, for every tab: aliases, dated, regional and [1m] ids alike. Mythos ids are Fable.
+export function modelKey(s) { s = String(s || '').toLowerCase().replace('mythos', 'fable'); for (var i = 0; i < MODEL_ORDER.length; i++) if (s.indexOf(MODEL_ORDER[i]) >= 0) return MODEL_ORDER[i]; return s || 'unknown' }
 export function routerStats(rows, events) {
-  var order = MODEL_ORDER.slice(), matrix = {}, stayed = 0, up = 0, down = 0, routed = 0, shadow = 0, corrected = 0, saved = 0, extra = 0, conf = []
+  var order = MODEL_ORDER.slice(0, 3), matrix = {}, stayed = 0, up = 0, down = 0, routed = 0, shadow = 0, corrected = 0, priced = 0, saved = 0, extra = 0, conf = []
   rows.forEach(function (r) { [modelKey(r.parent), modelKey(r.model)].forEach(function (m) { if (order.indexOf(m) < 0) order.push(m) }) })
   var turns = bySession(ofType(events, 'turn')), models = bySession(ofType(events, 'model'))
   rows.forEach(function (r) {
@@ -133,11 +135,18 @@ export function routerStats(rows, events) {
     var list = turns[r.session] || [], prev = null, next = null
     for (var i = 0; i < list.length; i++) { if (list[i].ts <= r.ts) prev = list[i]; else { next = list[i]; break } }
     if (next && prev && PRICE[from] && PRICE[to]) {
+      priced++
       var delta = Math.max(0, next.cost - prev.cost), change = delta * (PRICE[to] / PRICE[from] - 1)
       if (change < 0) saved += -change; else extra += change
     }
   })
-  return { order: order, matrix: matrix, total: rows.length, stayed: stayed, up: up, down: down, routed: routed, shadow: shadow, corrected: corrected, saved: saved, extra: extra, avgConf: mean(conf) }
+  return { order: order, matrix: matrix, total: rows.length, stayed: stayed, up: up, down: down, routed: routed, shadow: shadow, corrected: corrected, priced: priced, saved: saved, extra: extra, avgConf: mean(conf) }
+}
+
+// The band's router review of the last `days`: the Board's own estimate, from the router's log and the journal alone.
+export function routerReview(audit, events, now, days) {
+  var since = now - days * DAYMS, r = routerStats(audit.filter(function (a) { return a.ts >= since }), events)
+  return { days: days, total: r.total, routed: r.routed, corrected: r.corrected, priced: r.priced, saved: r.saved, extra: r.extra }
 }
 
 // The router report: the three goals of the original /router-report, from the audit log and the journal.
@@ -258,7 +267,7 @@ export function extraStats(tasks, events, now) {
   Object.keys(by).forEach(function (id) { var t = by[id][by[id].length - 1].tests || 'none'; tests[t] = (tests[t] || 0) + 1 })
   var modelCost = {}, levelTime = {}
   tasks.forEach(function (t) {
-    var m = t.model ? t.model.replace(/^claude-/, '').split('-')[0] : 'unknown'; modelCost[m] = (modelCost[m] || 0) + t.cost
+    var m = modelKey(t.model); modelCost[m] = (modelCost[m] || 0) + t.cost
     var l = t.level || 'off'; levelTime[l] = (levelTime[l] || 0) + t.agentMinutes
   })
   var grid = []

@@ -16,12 +16,13 @@ Thanks for looking at Unified Band. Small fixes and focused changes are welcome.
 
 ## Checks
 
-The same three checks run in CI (`.github/workflows/ci.yml`). Run them from the repository root:
+The same checks run in CI (`.github/workflows/ci.yml`). Run them from the repository root:
 
 ```
 claude plugin validate .
 claude plugin test .
 node scripts/router-edge.mjs
+node scripts/repair-check.mjs
 node scripts/smoke-board.mjs out.html
 ```
 

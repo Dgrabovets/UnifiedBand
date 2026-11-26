@@ -68,3 +68,33 @@ test('compact is the buttons alone', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: /Context|Cost|\$/ })).toBeUndefined()
   await ui.unmount()
 })
+
+test('the Router button is there, and an open review shows the estimate and its baseline', async ($, on) => {
+  on('clock.now', () => ({ value: 60000 }))
+  const live = { ...LIVE, reviewOpen: true, review: { days: 30, total: 9, routed: 4, corrected: 1, priced: 3, saved: 2.5, extra: 3 } }
+  on('state.get', (_, e) => ({ value: { value: e.key === 'band' ? PONYTAIL : e.key === 'live' ? live : undefined, version: 1 } }))
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Button', key: 'router' })).toBeDefined()
+  for (const text of [/Estimated Net Saving -\$0\.50/, /Priced 3 Of 4/, /Baseline/]) {
+    expect(await ui.find({ type: 'Text', text })).toBeDefined()
+  }
+  expect(await ui.find({ type: 'Text', text: /5-Hour Limit/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('pressing Router works the review out from the router log, and pressing again closes it', async ($, on) => {
+  on('clock.now', () => ({ value: Date.parse('2026-11-20T12:00:00Z') }))
+  on('env.get', () => ({ value: '/home' }))
+  on('fs.list', () => ({ value: [] }))
+  const row = { ts: '2026-11-19T10:00:00+00:00', session_id: 's', decision: { parent: 'opus', model: 'sonnet' }, outcome: 'routed' }
+  on('fs.read', () => ({ value: `${JSON.stringify(row)}\n` }))
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'router' })
+  expect(await ui.find({ type: 'Text', text: /1 Routed Of 1 Prompts/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /No Estimate/ })).toBeDefined()
+  await ui.press({ key: 'router' })
+  expect(await ui.find({ type: 'Text', text: /Router Review/ })).toBeUndefined()
+  await ui.unmount()
+})

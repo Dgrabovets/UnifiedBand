@@ -240,6 +240,20 @@ Why: in a real log of 42 decisions, 38 fell in the catch-all "moderate scope" ti
 - [ ] Rule suggestions for `router.json` from repeated corrections
 - [ ] More languages (German, Chinese, Japanese) with language-free signals
 
+### 17. Showcase (M)
+
+- [x] The smoke script has a DEMO mode with invented data (neutral project names, a few chats)
+- [x] Screenshots of every Board section, made with headless Chrome from `capture.mjs` in the demo project next to the repository
+- [x] A Remotion video built from a recording of the real Board (camera, callouts, an intro where the pile of add-ons collapses into one), an animated WebP of it, and a social preview picture
+- [x] README rewritten around the pictures, with a quick start, data locations and how to regenerate the media
+- [x] Owner's brand on the social preview and on new intro and outro cards of the video; version 0.3.0
+
+### 18. Unknown model and router review (M)
+
+- [x] Cost by model: rows written without a model are filled from the transcripts (SessionStart hook, `/ponytail band import`), one model family function for every tab, Fable included
+- [x] A Router button on the band: the review computed locally, an estimate with its baseline, refreshed at session start and when the Board opens
+- [ ] Press the Router button in a real Claude Code session (needs the new version installed)
+
 ## Decisions
 
 1. Project categories: option C (points), plus a page for every large project.

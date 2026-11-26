@@ -29,6 +29,9 @@ export type Band = {
   details: boolean
 }
 
+// What routing saved over the last `days`, an estimate: `priced` of the `routed` prompts had the turns to price them.
+export type Review = { days: number; total: number; routed: number; corrected: number; priced: number; saved: number; extra: number }
+
 export type Live = {
   branch: string
   root: string
@@ -40,6 +43,8 @@ export type Live = {
   compactions: number
   lastTurn?: { ms: number; cache?: number; at: number }
   router?: { total: number; routed: number; last?: { model: string; parent: string; tier: string; confidence: number; effort: string; reason: string; outcome: string; at: number } }
+  review?: Review
+  reviewOpen?: boolean
 }
 
 declare module 'claude-code' {

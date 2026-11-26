@@ -1,13 +1,13 @@
 {
   "name": "unified-band",
-  "version": "0.2.0",
-  "description": "Ponytail mode and skills, the model router (cheaper worker agents for routable prompts) and one band above the prompt: controls, session info, cost, tests, limits, model router and project completion.",
+  "version": "0.3.0",
+  "description": "Ponytail mode and skills, the model router (cheaper worker agents for routable prompts) and one band above the prompt: controls, session info, tests, limits, model router and project completion.",
   "types": "./types/index.d.ts",
   "userConfig": {
     "progressFile": {
       "type": "string",
       "title": "Progress file",
-      "description": "Markdown checklist at the repo root. Project Completion is its checked boxes over all boxes. The card is hidden when the file is missing.",
+      "description": "Markdown checklist at the repo root. Project Completion is its checked boxes over all boxes. The band shows N/A when the file is missing.",
       "default": "PLAN.md"
     },
     "ledger": {

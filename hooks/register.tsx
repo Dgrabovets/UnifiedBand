@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Live } from '../types'
-import { EMPTY_LIVE, afterCompact, afterModelCommand, refresh } from './band/live'
+import { EMPTY_LIVE, afterCompact, afterModelCommand, refresh, refreshReview } from './band/live'
 import { bandDir } from './band/events'
 import { track, writeBoard } from './band/track'
 
@@ -43,6 +43,7 @@ const bar = (percent: number, width = 10) => {
 }
 const tone = (percent: number) => (percent >= 85 ? 'error' : percent >= 70 ? 'warning' : undefined)
 const tokens = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n))
+const money = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toFixed(2)}`
 const minutes = (ms: number) => (ms >= 3.6e6 ? `${(ms / 3.6e6).toFixed(1)}h` : `${Math.round(ms / 6e4)}m`)
 const until = (iso: string | undefined, now: number) => {
   if (iso === undefined) return ''
@@ -61,6 +62,24 @@ async function openBoard($: EngineInterface) {
   const file = await writeBoard($, await bandDir($))
   const windows = (await $.env.get('OS')) === 'Windows_NT'
   await $.process.run(windows ? ['cmd', '/c', 'start', '', file] : ['xdg-open', file])
+  // After the page is open, so the review never holds it back or stops it.
+  await refreshReview($).catch(() => {})
+}
+
+// Opening works the review out again, so it is never older than the click.
+async function toggleReview($: EngineInterface) {
+  const open = (await read($, live)).reviewOpen !== true
+  if (open) await refreshReview($)
+  await update($, live, l => ({ ...l, reviewOpen: open }))
+}
+
+// The three lines of the router review.
+function reviewLines(r: Live['review']): string[] {
+  const days = `Last ${r?.days ?? 30} Days`
+  if (r === undefined || r.total === 0) return [`Router Review · ${days}`, 'No Router Decisions Recorded In This Period', ' ']
+  const none = r.routed === 0 ? 'Nothing Was Routed' : 'No Routed Prompt Has The Turns To Price It'
+  const saving = r.priced > 0 ? `Estimated Net Saving ${money(r.saved - r.extra)} (Saved ${money(r.saved)}, Extra ${money(r.extra)}) · Priced ${r.priced} Of ${r.routed}` : `No Estimate: ${none}`
+  return [`Router Review · ${days} · ${r.routed} Routed Of ${r.total} Prompts · ${r.corrected} Corrected By You`, saving, 'Baseline: The Same Work Kept On Your Model · From Local Logs, No Model Call']
 }
 
 export const register: Register = (on, options) => {
@@ -139,13 +158,25 @@ export const register: Register = (on, options) => {
         <Box flexGrow={1} />
         <Button key="review" plain label="Review" onPress={() => void run($, 'unified-band:ponytail-review').catch(() => $.ui.toast('Review Failed To Start'))} />
         <Button key="audit" plain label="Audit" onPress={() => void run($, 'unified-band:ponytail-audit').catch(() => $.ui.toast('Audit Failed To Start'))} />
+        <Button key="router" plain label="Router" onPress={() => toggleReview($).catch(() => $.ui.toast('Router Review Failed'))} />
         <Button key="board" plain label="Board" onPress={() => openBoard($).catch(() => $.ui.toast('Could Not Open The Board'))} />
         <Button key="compact" plain label={isCompact ? 'Expand' : 'Compact'} onPress={() => update($, compact, c => !c)} />
       </Box>
     )
 
-    // Compact is the buttons alone.
-    if (isCompact) return <Box flexDirection="column" width={width}>{header}</Box>
+    // The review takes the place of the session lines and meters while it is open, also in a compact or short band.
+    const review = l.reviewOpen ? (
+      <Box flexDirection="column" paddingX={1}>
+        {reviewLines(l.review).map((line, i) => (
+          <Text key={`review-${i}`} bold={i === 1} dimColor={i === 2} wrap="truncate-end">
+            {line}
+          </Text>
+        ))}
+      </Box>
+    ) : null
+
+    // Compact is the buttons alone, and the review when it was asked for.
+    if (isCompact) return <Box flexDirection="column" width={width}>{header}{review}</Box>
 
     // The desktop's proportional font breaks block and line glyphs; an SVG with a fixed pixel height draws real ones.
     const svg = (vw: number, vh: number, shapes: string, alt: string, px: number, wpx?: number) => {
@@ -195,6 +226,8 @@ export const register: Register = (on, options) => {
       : router
         ? 'Log Exists, None This Session'
         : 'Router Has Not Run'
+    const net = l.review && l.review.priced > 0 ? l.review.saved - l.review.extra : undefined
+    const saved = net === undefined ? '' : `${net < 0 ? 'Extra' : 'Saved'} ~${money(Math.abs(net))} Est. · `
     const callers = b.openCallers.length > 0 ? ` · ⚠ ${b.openCallers.length} Callers Open` : ''
 
     // One limit on one line: name, a long meter, the figure, and when it resets. Percent widths, so the columns line up row to row.
@@ -250,7 +283,7 @@ export const register: Register = (on, options) => {
       <Box flexDirection="row" {...(framed ? { borderStyle: 'round', borderDimColor: true, paddingX: 1 } : {})}>
         {Cell({ k: 'tests', cols: 4, grow: 1, first: true, label: 'Tests', value: tests ? tests.value : 'Not Run', color: tests?.color, sub: tests ? tests.sub : 'No Test Command Seen' })}
         {Cell({ k: 'reuse', cols: 4, grow: 1, label: 'Reuse', value: reuse !== undefined ? `${reuse}%` : 'N/A', sub: `${reuse !== undefined ? `${b.reused.length} Of ${b.created.length}` : 'No New Code'}${callers}` })}
-        {Cell({ k: 'router', cols: 4, grow: 1, label: 'Model Router', value: routerValue, color: router ? undefined : 'warning', sub: routerSub })}
+        {Cell({ k: 'router', cols: 4, grow: 1, label: 'Model Router', value: routerValue, color: router ? undefined : 'warning', sub: `${saved}${routerSub}` })}
         {Cell({ k: 'project', cols: 4, grow: 1, label: 'Project', value: pct !== undefined ? `${pct}%` : 'N/A', color: pct !== undefined ? 'success' : undefined, sub: l.tasks ? `${l.tasks.done} Of ${l.tasks.total} Done` : `No ${progressFile}` })}
       </Box>
     )
@@ -268,7 +301,7 @@ export const register: Register = (on, options) => {
     return (
       <Box flexDirection="column" width={width}>
         {header}
-        {rows >= 4 ? <Box flexDirection="column" marginTop={gap}>{body}</Box> : null}
+        {rows >= 4 || review ? <Box flexDirection="column" marginTop={gap}>{review ?? body}</Box> : null}
         {rows >= 6 ? <Box flexDirection="column" marginTop={gap}>{facts(framed)}</Box> : null}
       </Box>
     )

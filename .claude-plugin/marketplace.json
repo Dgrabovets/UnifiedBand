@@ -1,14 +1,14 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "dgrabovets-plugins",
-  "description": "Ponytail mode and skills plus one band above the Claude Code prompt.",
+  "description": "One plugin instead of many: a band above the Claude Code prompt, Ponytail, a model router and a local Board.",
   "owner": {
     "name": "dgrabovets"
   },
   "plugins": [
     {
       "name": "unified-band",
-      "description": "Ponytail mode, skills and task tracking in one mod, with a single band above the prompt: controls, session info, cost, tests, limits, model router and project completion.",
+      "description": "Ponytail mode, skills, task tracking and a model router in one mod, with a single band above the prompt (controls, session info, tests, limits, router decision and project completion) and a local Board.",
       "source": "./",
       "category": "productivity"
     }

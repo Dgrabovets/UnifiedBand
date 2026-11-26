@@ -2,7 +2,8 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, TurnCompleteInput } from 'claude-code'
 
 import type { Band, Live } from '../../types'
-import { NEGATIVE, RESULT, baseName, logEvent, routerLogPath } from './events'
+import { routerReview } from './board-stats'
+import { NEGATIVE, RESULT, baseName, boardExtra, logEvent, routerLogPath } from './events'
 
 type Options = { readonly [field: string]: unknown }
 
@@ -80,9 +81,23 @@ export const countEdit = () => {
   edits += 1
 }
 
-// Runs when a session starts or a turn ends: the part of the band that is not Ponytail's tracking.
+const REVIEW_DAYS = 30
+
+// The router review, worked out on this machine from the router's log and the journal: no model call, no tokens.
+// It runs when a session starts, when the Board is built and when the Router button opens it.
+export async function refreshReview($: EngineInterface) {
+  const now = await $.clock.now()
+  // A day more of journal, so the first routed prompt of the period still has the turn before it.
+  const { audit, events } = await boardExtra($, now - (REVIEW_DAYS + 1) * 86400000)
+  const review = routerReview(audit, events, now, REVIEW_DAYS)
+  await update($, live, l => ({ ...l, review }))
+}
+
+// Runs when a session starts: the part of the band that is not Ponytail's tracking.
 export async function afterStart($: EngineInterface, options: Options) {
   await refresh($, options)
+  // A broken log or journal costs only the review.
+  await refreshReview($).catch(() => {})
 }
 
 async function where($: EngineInterface) {

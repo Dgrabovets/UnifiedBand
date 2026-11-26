@@ -99,3 +99,21 @@ test('the router log is read from CC_ROUTER_CACHE_DIR when it is set', async () 
   } as never
   expect((await boardExtra($)).audit.length).toBe(1)
 })
+
+test('a reader that asks for recent history skips the older journal files', async () => {
+  const asked: string[] = []
+  const env: Record<string, string> = { XDG_CONFIG_HOME: '/cfg', HOME: '/home' }
+  const names = ['events-2026-10-01-a.jsonl', 'events-2026-11-10-b.jsonl', 'events-2026-11-12-c.jsonl']
+  const $ = {
+    env: { get: async (name: string) => env[name] },
+    fs: {
+      list: async () => names.map(name => ({ name, kind: 'file' })),
+      read: async (path: string) => {
+        asked.push(path)
+        return ''
+      },
+    },
+  } as never
+  await boardExtra($, Date.UTC(2026, 10, 10, 15))
+  expect(asked.filter(p => p.includes('events-'))).toEqual(['/cfg/ponytail/band/events-2026-11-10-b.jsonl', '/cfg/ponytail/band/events-2026-11-12-c.jsonl'])
+})

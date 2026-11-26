@@ -162,7 +162,8 @@ export const TITLE_RECORD = '"type":"custom-title"'
 // The model that wrote most replies, from the transcript text (`"model":"claude-opus-5-5"`). Empty when none.
 export function mainModel(grepOut: string): string {
   const count = new Map<string, number>()
-  for (const m of grepOut.matchAll(/"model":"(claude-[^"]+)"/g)) count.set(m[1], (count.get(m[1]) ?? 0) + 1)
+  // A cloud provider puts its own prefix in front, as in `us.anthropic.claude-...`.
+  for (const m of grepOut.matchAll(/"model":"((?:[a-z-]+\.)*claude-[^"]+)"/g)) count.set(m[1], (count.get(m[1]) ?? 0) + 1)
   return [...count].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
 }
 
@@ -229,6 +230,8 @@ export function resume(b: Band, csv: string, key: string): Band {
   return {
     ...b,
     name: b.name || at('name'),
+    // Kept, so a turn that cannot read the transcript does not write the row without a model.
+    model: b.model || at('model'),
     busyMs: Math.max(b.busyMs, (Number(at('agent_minutes')) || 0) * 60000),
     tokens: total > totalTokens(b.tokens) ? { input: total - output, output, cacheRead: 0, cacheWrite: 0 } : b.tokens,
   }
