@@ -14,9 +14,7 @@
   <img alt="Data stays local" src="https://img.shields.io/badge/data-stays%20local-7c8cff">
 </p>
 
-<p align="center">
-  <a href="docs/demo.mp4"><img src="docs/demo.webp" alt="Unified Band, one plugin instead of many, followed by a tour of the Board" width="820"></a>
-</p>
+https://github.com/user-attachments/assets/c0e00c6c-d970-44a4-9bf1-ab6f844daaa5
 
 <p align="center"><sub>A one minute tour, recorded from the real Board with invented demo data. <a href="docs/demo.mp4">Open the full quality video</a>.</sub></p>
 
