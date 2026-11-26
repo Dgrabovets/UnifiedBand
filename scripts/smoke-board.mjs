@@ -22,8 +22,11 @@ registerHooks({
 const { boardHtml, tasksFrom } = await import('../hooks/band/board.ts')
 
 const dir = join(homedir(), '.config', 'ponytail', 'band')
+// DEMO=1 builds the page from invented data only (neutral project names, a few chats), for screenshots and the README video.
+const DEMO = Boolean(process.env.DEMO)
+const NAMES = DEMO ? ['Atlas', 'Harbor', 'Notes'] : ['Steward', 'SipAndTell', 'UnifiedBand']
 let tasks = []
-try {
+if (!DEMO) try {
   tasks = readdirSync(dir).filter(f => f.endsWith('.csv')).flatMap(f => tasksFrom(readFileSync(join(dir, f), 'utf8')))
 } catch {}
 const now = Date.now()
@@ -32,14 +35,15 @@ const MIN = 60000, DAY = 86400000
 if (tasks.length === 0) {
   const p2 = n => String(n).padStart(2, '0')
   const at = d => { const t = new Date(now - d * DAY); return `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())} 10:00` }
-  tasks = ['Steward', 'SipAndTell', 'Notes'].flatMap((project, i) => [1, 3, 8, 15].map(d => ({ key: `${project}-${d}`, started: at(d + i), project, name: 'Synthetic', cost: 2 + i, turns: 12, agentMinutes: 25, tokens: 40000, reuse: 40, tests: 'passed', level: 'full', model: 'claude-sonnet-5-5' })))
+  tasks = NAMES.flatMap((project, i) => [1, 2, 3, 5, 8, 11, 15, 19, 24, 28, 34, 38, 44, 50].map(d => ({ key: `${project}-${d}`, started: at(d + i), project, name: 'Synthetic', cost: (2 + i) * (1 + (d % 4) * 0.7), turns: 12 + (d % 5) * 6, agentMinutes: 25 + (d % 6) * 11, tokens: 40000 + d * 9000, reuse: 40, tests: 'passed', level: 'full', model: ['claude-sonnet-5-5', 'claude-opus-5-5'][(d + i) % 2] })))
+  if (DEMO) tasks.push(...[2, 4, 6, 9, 13, 17, 21, 26].map(d => ({ key: `chat-${d}`, started: at(d), project: `spare-${d}Xa9`, name: 'Quick question', cost: 0.4 + d * 0.05, turns: 3, agentMinutes: 4, tokens: 9000, reuse: null, tests: '', level: 'full', model: 'claude-haiku-5-5' })))
 }
 // STREAK=1 adds a session on each of the last ten days, so the streak confetti has something to celebrate.
 if (process.env.STREAK) {
   for (let d = 0; d < 10; d++) {
     const t = new Date(now - d * DAY)
     const p2 = n => String(n).padStart(2, '0')
-    tasks.push({ key: `streak-${d}`, started: `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())} 10:00`, project: 'Steward', name: 'Streak', cost: 1, turns: 5, agentMinutes: 30, tokens: 1000, reuse: null, tests: '', level: 'ultra', model: '' })
+    tasks.push({ key: `streak-${d}`, started: `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())} 10:00`, project: NAMES[0], name: 'Streak', cost: 1, turns: 5, agentMinutes: 30, tokens: 1000, reuse: null, tests: '', level: 'ultra', model: 'claude-sonnet-5-5' })
   }
 }
 
@@ -47,13 +51,13 @@ if (process.env.STREAK) {
 const events = [], audit = [], workers = []
 let seed = 7
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
-const projects = ['Steward', 'SipAndTell', 'UnifiedBand']
+const projects = NAMES
 projects.forEach((project, pi) => {
   for (let d = 20; d >= 0; d -= pi + 1) {
     const session = `${project}-${d}`
     let ctx = 5, cost = 0, comp = 0, done = 2 + (20 - d) * (pi === 2 ? 1.5 : 0.4)
     for (let i = 0; i < 25; i++) {
-      const ts = now - d * DAY + i * 6 * MIN
+      const ts = now - d * DAY - 150 * MIN + i * 6 * MIN
       ctx += 2 + rnd() * 4
       if (ctx > 88) { ctx = 12; comp++; events.push({ t: 'compact', ts, session, project, ctx: 88 }) }
       cost += 0.1 + rnd() * 0.3
@@ -66,7 +70,7 @@ projects.forEach((project, pi) => {
       })
       if (i % 6 === 0) events.push({ t: 'prompt', ts, session, project, words: 3, neg: rnd() < 0.15 })
       if (i % 8 === 3) {
-        audit.push({ ts, session, parent: 'sonnet', model: ['sonnet', 'opus', 'haiku'][i % 3], effort: 'low', tier: 'standard', conf: 0.6 + rnd() * 0.3, outcome: i % 3 ? 'routed' : 'silent', reason: 'moderate scope' })
+        audit.push({ ts, session, parent: 'sonnet', model: (DEMO ? ['sonnet', 'sonnet', 'haiku', 'sonnet', 'opus', 'sonnet'] : ['sonnet', 'opus', 'haiku'])[audit.length % (DEMO ? 6 : 3)], effort: 'low', tier: 'standard', conf: 0.6 + rnd() * 0.3, outcome: DEMO ? (audit.length % 6 === 2 || audit.length % 6 === 4 ? 'routed' : 'silent') : i % 3 ? 'routed' : 'silent', reason: 'moderate scope' })
         if (i % 3 === 1) { workers.push({ ts: ts + MIN, session, outcome: 'delegated', model: 'sonnet', ms: 40000 + i * 900 }, { ts: ts + 2 * MIN, session, outcome: 'worker_usage', model: 'sonnet', actual: 'claude-sonnet-5-5', input: 30000 + i * 700, output: 4000 + i * 90 }) }
         if (i % 3 === 1 && rnd() < 0.4) events.push({ t: 'model', ts: ts + 2 * MIN, session, project, arg: 'sonnet' })
       }
@@ -76,7 +80,7 @@ projects.forEach((project, pi) => {
 })
 
 // REAL=1 swaps the synthetic journal for the real one: what the mod's boardExtra reads.
-let extra = { events, audit, workers, config: { projects: { SipAndTell: { label: 'Sip & Tell' } } } }
+let extra = { events, audit, workers, config: DEMO ? { projects: { Atlas: { category: 'Large' }, Harbor: { category: 'Large' } } } : { projects: { SipAndTell: { label: 'Sip & Tell' } } } }
 if (process.env.REAL) {
   const realEvents = readdirSync(dir).filter(f => /^events-\d{4}-\d{2}(-\d{2}-[\w-]+)?\.jsonl$/.test(f)).sort().flatMap(f => readFileSync(join(dir, f), 'utf8').split('\n').flatMap(l => { try { return l ? [JSON.parse(l)] : [] } catch { return [] } }))
   let realAudit = []
