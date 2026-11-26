@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // ponytail — imports past Claude Code sessions into the band's task ledger, so the board can
 // compare them: cost, agent time, tokens, turns, name and model. Started in the background by
-// `/ponytail band import`; also runs by hand. Sessions already in the ledger are left alone.
+// `/ponytail band import`; also runs by hand. Sessions already in the ledger are left alone,
+// except that a row without a model gets one. A SessionStart hook runs that repair alone.
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const { StringDecoder } = require('string_decoder');
 const { getClaudeDir } = require('./ponytail-config');
 
@@ -62,6 +63,9 @@ const promptText = r => {
   return t.trim();
 };
 const ms = r => (r.timestamp ? Date.parse(r.timestamp) : NaN);
+const reply = r => r.type === 'assistant' && r.message && r.message.model && r.message.model !== '<synthetic>';
+// The model that wrote most replies, from a count per model; undefined when there is none.
+const topModel = replies => Object.keys(replies).sort((a, b) => replies[b] - replies[a])[0];
 const toolResult = r => (r.toolResult !== undefined ? r.toolResult
   : Array.isArray(r.message && r.message.content) && r.message.content.some(b => b && b.type === 'tool_result'));
 
@@ -112,7 +116,6 @@ function sessionStats(records, subagentRecords = [], sessionId = '') {
   let tokens = 0;
   let output = 0;
   let estimate = 0;
-  const reply = r => r.type === 'assistant' && r.message && r.message.model && r.message.model !== '<synthetic>';
   for (const r of records) if (reply(r)) replies[r.message.model] = (replies[r.message.model] || 0) + 1;
   for (const r of [...records, ...subagentRecords]) {
     if (!reply(r)) continue;
@@ -164,7 +167,7 @@ function sessionStats(records, subagentRecords = [], sessionId = '') {
   return {
     startedMs: started,
     name: (titled.length ? titled[titled.length - 1].customTitle.trim() : first.split('\n')[0]).slice(0, 60),
-    model: models.sort((a, b) => replies[b] - replies[a])[0],
+    model: topModel(replies),
     cost,
     own,
     estimate,
@@ -267,9 +270,93 @@ function run() {
   return { sessions, added };
 }
 
-if (require.main === module) {
-  const { sessions, added } = run();
-  process.stdout.write(`ponytail band import: ${sessions} past sessions found, ${added} new rows in the board.\n`);
+// Columns of one CSV line; 0 when a quoted field is not closed, so the line is only part of a row.
+function columnCount(line) {
+  let count = 1;
+  let quoted = false;
+  for (const c of line) {
+    if (c === '"') quoted = !quoted;
+    else if (c === ',' && !quoted) count++;
+  }
+  return quoted ? 0 : count;
 }
 
-module.exports = { CSV_HEADER, PRICES, replyCost, sessionStats, csvRow, mergeRows, readRecords, run };
+// The band once wrote rows without a model (it looked for it with grep, which Windows does not have). Such a row ends
+// in the empty last column. Its session prefix, or null. An older, shorter row also ends in a comma, so the row must
+// have every column of the header: otherwise the model would land in another column.
+function missingModel(line) {
+  const m = /^([\w-]{8})-\d+,.*,$/.exec(line);
+  return m && columnCount(line) === columnCount(CSV_HEADER) ? m[1] : null;
+}
+
+// The model of each wanted session, from its transcript. A session whose transcript is gone stays unknown.
+function sessionModels(wanted) {
+  const list = dir => { try { return fs.readdirSync(dir); } catch (e) { return []; } };
+  const root = path.join(getClaudeDir(), 'projects');
+  const models = new Map();
+  for (const dir of list(root)) {
+    for (const file of list(path.join(root, dir))) {
+      const prefix = file.slice(0, 8);
+      if (!file.endsWith('.jsonl') || !wanted.has(prefix)) continue;
+      const replies = {};
+      try {
+        for (const r of readRecords(path.join(root, dir, file))) if (reply(r)) replies[r.message.model] = (replies[r.message.model] || 0) + 1;
+      } catch (e) {}
+      if (topModel(replies)) models.set(prefix, topModel(replies));
+    }
+  }
+  return models;
+}
+
+// Fills the empty models of the ledger from the transcripts. Nothing else in a row changes.
+function repairModels() {
+  const dir = ledgerDir();
+  // A file that cannot be read counts as empty, and an empty file is never written back.
+  const read = file => { try { return fs.readFileSync(path.join(dir, file), 'utf8'); } catch (e) { return ''; } };
+  let files = [];
+  try { files = fs.readdirSync(dir).filter(f => f.endsWith('.csv')); } catch (e) {}
+  const holes = files.map(file => {
+    const lines = read(file).split('\n');
+    return { file, prefixes: lines[0].endsWith(',model') ? lines.map(missingModel).filter(Boolean) : [] };
+  }).filter(h => h.prefixes.length > 0);
+  const missing = holes.reduce((n, h) => n + h.prefixes.length, 0);
+  if (missing === 0) return { missing, filled: 0 };
+  const models = sessionModels(new Set(holes.flatMap(h => h.prefixes)));
+  let filled = 0;
+  for (const { file, prefixes } of holes) {
+    if (!prefixes.some(p => models.has(p))) continue;
+    // Read again right before the write: transcripts take a while, and a running session rewrites its own ledger.
+    let count = 0;
+    const next = read(file).split('\n').map(line => {
+      const model = models.get(missingModel(line));
+      if (!model) return line;
+      count++;
+      return line + field(model);
+    }).join('\n');
+    if (count === 0) continue;
+    const target = path.join(dir, file);
+    try {
+      // Written beside and renamed over, so a stopped process never leaves half a ledger.
+      // The process id keeps two sessions that start together from sharing one temporary file.
+      const temporary = `${target}.${process.pid}.tmp`;
+      fs.writeFileSync(temporary, next);
+      fs.renameSync(temporary, target);
+      filled += count;
+    } catch (e) {}
+  }
+  return { missing, filled };
+}
+
+module.exports = { CSV_HEADER, PRICES, replyCost, sessionStats, sessionModels, missingModel, csvRow, mergeRows, readRecords, run, repairModels };
+
+if (require.main === module) {
+  if (process.argv[2] !== '--repair') {
+    const { sessions, added } = run();
+    process.stdout.write(`ponytail band import: ${sessions} past sessions found, ${added} new rows in the board.\n`);
+  }
+  const { missing, filled } = repairModels();
+  process.stdout.write(`ponytail band import: ${filled} of ${missing} rows without a model filled.\n`);
+} else if (process.argv[1] === 'repair') {
+  // The SessionStart hook (`node -e "require(...)" repair`): detached, so a session never waits for the transcripts.
+  spawn(process.execPath, [__filename, '--repair'], { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref();
+}

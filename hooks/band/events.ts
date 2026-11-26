@@ -37,10 +37,12 @@ export async function routerLogPath($: EngineInterface) {
 
 // What the Board adds to the task ledger: the journal, the router's decisions and the owner's board.json.
 // shortcut: reads whole files; $.fs.read refuses one over 4 MiB, so an oversize router log is left out.
-export async function boardExtra($: EngineInterface) {
+// `since` skips the journal files of earlier days, for a reader that needs recent history only.
+export async function boardExtra($: EngineInterface, since = 0) {
   const dir = await bandDir($)
+  const first = `events-${new Date(since).toISOString().slice(0, 10)}`
   const events: unknown[] = []
-  for (const f of (await $.fs.list(dir).catch(() => [])).filter(x => x.kind === 'file' && /^events-\d{4}-\d{2}(-\d{2}-[\w-]+)?\.jsonl$/.test(x.name)).sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const f of (await $.fs.list(dir).catch(() => [])).filter(x => x.kind === 'file' && /^events-\d{4}-\d{2}(-\d{2}-[\w-]+)?\.jsonl$/.test(x.name) && (since === 0 || x.name >= first)).sort((a, b) => a.name.localeCompare(b.name))) {
     for (const line of (await $.fs.read(`${dir}/${f.name}`).catch(() => '')).split('\n')) {
       try {
         if (line !== '') events.push(JSON.parse(line))

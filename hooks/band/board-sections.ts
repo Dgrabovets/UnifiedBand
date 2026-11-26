@@ -308,7 +308,8 @@ function drawRouter() {
   var table = h('table', 'mx'); table.append(thead, body)
   var matrix = panel('Where prompts went', 'Rows are the model you were on, columns the model the router picked.', table,
     row('leg', [h('span', '', 'Stayed: ' + r.stayed + ' of ' + r.total + ' · ' + Math.round(r.stayed / r.total * 100) + '%'), h('span', '', 'Sent up: ' + r.up), h('span', '', 'Sent down: ' + r.down)]),
-    row('stats4', [stat('Saved, est.', money(r.saved), 'from down hops'), stat('Extra, est.', '+' + money(r.extra), 'from up hops'), stat('Avg confidence', r.avgConf == null ? '–' : (Math.round(r.avgConf * 100) / 100).toFixed(2), 'classifier score'), stat('Corrected by you', String(r.corrected), 'of ' + r.routed + ' routed')]))
+    row('stats4', [stat('Saved, est.', money(r.saved), 'from down hops'), stat('Extra, est.', '+' + money(r.extra), 'from up hops'), stat('Avg confidence', r.avgConf == null ? '–' : (Math.round(r.avgConf * 100) / 100).toFixed(2), 'classifier score'), stat('Corrected by you', String(r.corrected), 'of ' + r.routed + ' routed')]),
+    h('div', 'note', 'Estimates, priced on ' + r.priced + ' of ' + r.routed + ' routed prompts. Baseline: your own model. The cost seen in the turn after each routed prompt is scaled by the price gap between the two models, so treat it as rough.'))
   var last = panel('Last decisions', 'Click a column to sort. Sort by Move to see why the router changed the model.'), t = h('table', 'dt'), th = h('tr')
   var rank = function (m) { return r.order.indexOf(modelKey(m)) }, EFFORT = ['low', 'medium', 'high', 'xhigh', 'max']
   var fixed = function (x) { return x.outcome !== 'silent' && x.outcome !== 'shadow' && models.some(function (m) { return m.session === x.session && m.ts > x.ts && m.ts - x.ts < 600000 }) }
