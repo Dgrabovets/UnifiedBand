@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { boardExtra } from '../hooks/band/events'
+import { boardExtra, routerRows } from '../hooks/band/events'
 
 test('boardExtra reads every month of the journal, maps the router log and parses board.json', async () => {
   const files: Record<string, string> = {
@@ -35,7 +35,56 @@ test('boardExtra reads every month of the journal, maps the router log and parse
   expect((r.config as { projects: { A: { label: string } } }).projects.A.label).toBe('Alpha')
 })
 
-test('boardExtra with no journal, no router log and no board.json gives empty data, not an error', async () => {
+const at = (minute: number) => `2026-11-19T10:${String(minute).padStart(2, '0')}:00.000000+00:00`
+const order = (minute: number, id: string, session = 's', parent = 'opus') => ({ ts: at(minute), session_id: session, decision: { parent, model: 'sonnet', decision_id: id }, outcome: 'injected' })
+const launch = (minute: number, id: string | null, agent: string) => ({ ts: at(minute), kind: 'router', outcome: 'delegated', model: 'sonnet', agent_id: agent, decision_id: id })
+const usage = (minute: number, id: string | null, agent: string, output: number, session = 's') => ({ ts: at(minute), kind: 'router', outcome: 'worker_usage', model: 'sonnet', agent_id: agent, session_id: session, decision_id: id, usage: { tokens_in: 1, tokens_out: output, cache_read: 3, cache_write: 4 } })
+const inline = (minute: number, id: string) => ({ ts: at(minute), outcome: 'auto_inline_unattributed', session_id: 's', decision_id: id })
+
+test('an order ran only when its worker started before the turn closed it and before the next prompt', () => {
+  const r = routerRows([
+    // r_1 runs a worker in its own turn.
+    order(0, 'r_1'), launch(1, 'r_1', 'a1'), usage(2, 'r_1', 'a1', 10),
+    // r_2 is ignored; a worker started by name later carries its id.
+    order(3, 'r_2'), inline(4, 'r_2'), launch(5, 'r_2', 'a2'), usage(6, 'r_2', 'a2', 20),
+    // r_1 again, three prompts later: still not that order's worker.
+    launch(7, 'r_1', 'a3'),
+    // A foreground worker writes its usage row before its launch row.
+    order(8, 'r_3'), usage(9, 'r_3', 'a4', 30), launch(10, 'r_3', 'a4'),
+    order(11, 'r_4'), { ...launch(12, 'r_4', 'a5'), outcome: 'delegated_failed' },
+  ])
+  expect(r.audit.map(a => a.ran)).toEqual([true, false, true, false])
+  expect(r.workers.filter(w => w.outcome === 'worker_usage').map(w => [w.agent, w.auto])).toEqual([['a1', true], ['a2', false], ['a4', true]])
+  expect(r.workers.find(w => w.agent === 'a3')?.auto).toBe(false)
+})
+
+test('a continued worker counts once with its newest totals, and its launch row gets its session', () => {
+  const r = routerRows([order(0, 'r_1', 's', 'sonnet'), launch(1, 'r_1', 'a1'), usage(2, 'r_1', 'a1', 10), order(3, 'r_2'), usage(20, 'r_1', 'a1', 50)])
+  const [first, last] = r.workers
+  expect(r.workers.length).toBe(2)
+  expect([first?.session, last?.output, last?.fresh, last?.write, last?.read, last?.auto, last?.parent]).toEqual(['s', 50, 1, 4, 3, true, 'opus'])
+})
+
+test('boardExtra reads the rotated router logs before the current one', async () => {
+  const files: Record<string, string> = {
+    '/home/.claude/cache/router/audit.jsonl.20261119T100000Z': `${JSON.stringify(order(0, 'r_1'))}\n`,
+    '/home/.claude/cache/router/audit.jsonl': `${JSON.stringify(launch(1, 'r_1', 'a1'))}\n`,
+  }
+  const $ = {
+    env: { get: async (name: string) => (name === 'HOME' ? '/home' : undefined) },
+    fs: {
+      list: async (dir: string) => (dir.endsWith('/router') ? ['audit.jsonl', 'audit.jsonl.20261119T100000Z', 'sessions'].map(name => ({ name, kind: 'file' })) : []),
+      read: async (path: string) => {
+        if (path in files) return files[path]
+        throw new Error('missing')
+      },
+    },
+  } as never
+  const r = await boardExtra($)
+  expect(r.audit.map(a => a.ran)).toEqual([true])
+})
+
+test('boardExtra with no journal,no router log and no board.json gives empty data, not an error', async () => {
   const $ = {
     env: { get: async () => undefined },
     fs: { list: async () => { throw new Error('missing') }, read: async () => { throw new Error('missing') } },

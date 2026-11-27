@@ -29,8 +29,9 @@ export type Band = {
   details: boolean
 }
 
-// What routing saved over the last `days`, an estimate: `priced` of the `routed` prompts had the turns to price them.
-export type Review = { days: number; total: number; routed: number; corrected: number; priced: number; saved: number; extra: number }
+// What routing saved over the last `days`, an estimate from the workers' tokens. `saved` is every finished worker,
+// `autoSaved` only those an order started; both are below zero when the workers cost more than the session model.
+export type Review = { days: number; total: number; corrected: number; orders: number; ran: number; finished: number; priced: number; saved: number; autoWorkers: number; autoPriced: number; autoSaved: number }
 
 export type Live = {
   branch: string

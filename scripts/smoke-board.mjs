@@ -70,8 +70,13 @@ projects.forEach((project, pi) => {
       })
       if (i % 6 === 0) events.push({ t: 'prompt', ts, session, project, words: 3, neg: rnd() < 0.15 })
       if (i % 8 === 3) {
-        audit.push({ ts, session, parent: 'sonnet', model: (DEMO ? ['sonnet', 'sonnet', 'haiku', 'sonnet', 'opus', 'sonnet'] : ['sonnet', 'opus', 'haiku'])[audit.length % (DEMO ? 6 : 3)], effort: 'low', tier: 'standard', conf: 0.6 + rnd() * 0.3, outcome: DEMO ? (audit.length % 6 === 2 || audit.length % 6 === 4 ? 'routed' : 'silent') : i % 3 ? 'routed' : 'silent', reason: 'moderate scope' })
-        if (i % 3 === 1) { workers.push({ ts: ts + MIN, session, outcome: 'delegated', model: 'sonnet', ms: 40000 + i * 900 }, { ts: ts + 2 * MIN, session, outcome: 'worker_usage', model: 'sonnet', actual: 'claude-sonnet-5-5', input: 30000 + i * 700, output: 4000 + i * 90 }) }
+        const sent = DEMO ? audit.length % 6 === 2 || audit.length % 6 === 4 : i % 3 !== 0
+        const ran = sent && i % 3 === 1
+        audit.push({ ts, session, parent: 'sonnet', model: (DEMO ? ['sonnet', 'sonnet', 'haiku', 'sonnet', 'opus', 'sonnet'] : ['sonnet', 'opus', 'haiku'])[audit.length % (DEMO ? 6 : 3)], effort: 'low', tier: 'standard', conf: 0.6 + rnd() * 0.3, outcome: sent ? 'injected' : 'silent', ran, reason: 'moderate scope' })
+        if (i % 3 === 1) {
+          const model = d % 4 ? 'haiku' : 'opus',fresh = 4000 + i * 100, write = 26000 + i * 600, read = 400000 + i * 9000, output = 4000 + i * 90
+          workers.push({ ts: ts + MIN, session, outcome: 'delegated', model, ms: 40000 + i * 900, auto: ran }, { ts: ts + 2 * MIN, session, outcome: 'worker_usage', model, actual: `claude-${model}-5-5`, auto: ran, parent: 'sonnet', fresh, write, read, output, input: fresh + write })
+        }
         if (i % 3 === 1 && rnd() < 0.4) events.push({ t: 'model', ts: ts + 2 * MIN, session, project, arg: 'sonnet' })
       }
     }
@@ -83,13 +88,14 @@ projects.forEach((project, pi) => {
 let extra = { events, audit, workers, config: DEMO ? { projects: { Atlas: { category: 'Large' }, Harbor: { category: 'Large' } } } : { projects: { SipAndTell: { label: 'Sip & Tell' } } } }
 if (process.env.REAL) {
   const realEvents = readdirSync(dir).filter(f => /^events-\d{4}-\d{2}(-\d{2}-[\w-]+)?\.jsonl$/.test(f)).sort().flatMap(f => readFileSync(join(dir, f), 'utf8').split('\n').flatMap(l => { try { return l ? [JSON.parse(l)] : [] } catch { return [] } }))
-  let realAudit = []
+  const { routerRows } = await import('../hooks/band/events.ts')
+  let log = []
   try {
-    realAudit = readFileSync(join(homedir(), '.claude', 'cache', 'router', 'audit.jsonl'), 'utf8').split('\n').flatMap(l => { try { const r = JSON.parse(l); return [{ ts: Date.parse(r.ts), session: r.session_id, parent: r.decision?.parent, model: r.decision?.model, effort: r.decision?.effort, tier: r.decision?.tier, conf: r.decision?.confidence, outcome: r.outcome, reason: r.decision?.reason }] } catch { return [] } })
+    log = readFileSync(join(homedir(), '.claude', 'cache', 'router', 'audit.jsonl'), 'utf8').split('\n').flatMap(l => { try { return l ? [JSON.parse(l)] : [] } catch { return [] } })
   } catch {}
   let config = {}
   try { config = JSON.parse(readFileSync(join(dir, 'board.json'), 'utf8')) } catch {}
-  extra = { events: realEvents, audit: realAudit, config }
+  extra = { events: realEvents, ...routerRows(log), config }
 }
 const html = boardHtml(tasks, now, extra)
 const out = process.argv[2]

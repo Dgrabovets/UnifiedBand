@@ -69,14 +69,14 @@ test('compact is the buttons alone', async ($, on) => {
   await ui.unmount()
 })
 
-test('the Router button is there, and an open review shows the estimate and its baseline', async ($, on) => {
+test('the Router button is there, and an open review shows both measured lines', async ($, on) => {
   on('clock.now', () => ({ value: 60000 }))
-  const live = { ...LIVE, reviewOpen: true, review: { days: 30, total: 9, routed: 4, corrected: 1, priced: 3, saved: 2.5, extra: 3 } }
+  const live = { ...LIVE, reviewOpen: true, review: { days: 30, total: 9, corrected: 1, orders: 4, ran: 2, finished: 8, priced: 7, saved: -12.5, autoWorkers: 2, autoPriced: 2, autoSaved: 2.5 } }
   on('state.get', (_, e) => ({ value: { value: e.key === 'band' ? PONYTAIL : e.key === 'live' ? live : undefined, version: 1 } }))
 
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await ui.find({ type: 'Button', key: 'router' })).toBeDefined()
-  for (const text of [/Estimated Net Saving -\$0\.50/, /Priced 3 Of 4/, /Baseline/]) {
+  for (const text of [/2 Of 4 Orders Ran On A Worker · \$2\.50 Saved$/, /\$12\.50 More Than On The Session Model \(7 Of 8 Priced\)/, /Estimate From Worker Tokens/]) {
     expect(await ui.find({ type: 'Text', text })).toBeDefined()
   }
   expect(await ui.find({ type: 'Text', text: /5-Hour Limit/ })).toBeUndefined()
@@ -87,13 +87,13 @@ test('pressing Router works the review out from the router log, and pressing aga
   on('clock.now', () => ({ value: Date.parse('2026-11-20T12:00:00Z') }))
   on('env.get', () => ({ value: '/home' }))
   on('fs.list', () => ({ value: [] }))
-  const row = { ts: '2026-11-19T10:00:00+00:00', session_id: 's', decision: { parent: 'opus', model: 'sonnet' }, outcome: 'routed' }
+  const row = { ts: '2026-11-19T10:00:00+00:00', session_id: 's', decision: { parent: 'opus', model: 'sonnet', decision_id: 'r_1' }, outcome: 'injected' }
   on('fs.read', () => ({ value: `${JSON.stringify(row)}\n` }))
 
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   await ui.press({ key: 'router' })
-  expect(await ui.find({ type: 'Text', text: /1 Routed Of 1 Prompts/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /No Estimate/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /0 Of 1 Orders Ran On A Worker · \$0\.00 Saved/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /None Finished/ })).toBeDefined()
   await ui.press({ key: 'router' })
   expect(await ui.find({ type: 'Text', text: /Router Review/ })).toBeUndefined()
   await ui.unmount()

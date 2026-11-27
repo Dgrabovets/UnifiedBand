@@ -254,6 +254,18 @@ Why: in a real log of 42 decisions, 38 fell in the catch-all "moderate scope" ti
 - [x] A Router button on the band: the review computed locally, an estimate with its baseline, refreshed at session start and when the Board opens
 - [ ] Press the Router button in a real Claude Code session (needs the new version installed)
 
+### 19. Measured router savings (M)
+
+The estimate of stage 18 counted orders that never ran and scaled a whole turn's cost. The owner chose this replacement on 27 November 2026.
+
+- [x] An order counts as run only when a worker started under it in the same turn
+- [x] Savings from each finished worker's tokens against the same tokens on the session's model: one line for orders, one for all router workers
+- [x] A continued worker is recorded again, and the newest row counts; rotated router logs are read
+- [x] Cache writes of a reply with several passes are priced; Fable 5.2 has a price
+- [x] Version 0.4.0, so an installed 0.3.0 can update
+- [ ] See the two lines in a real Claude Code session (needs the new version installed)
+- [ ] New Router screenshot and video part (the old ones show the estimate)
+
 ## Decisions
 
 1. Project categories: option C (points), plus a page for every large project.

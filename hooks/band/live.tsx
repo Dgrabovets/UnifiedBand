@@ -87,9 +87,9 @@ const REVIEW_DAYS = 30
 // It runs when a session starts, when the Board is built and when the Router button opens it.
 export async function refreshReview($: EngineInterface) {
   const now = await $.clock.now()
-  // A day more of journal, so the first routed prompt of the period still has the turn before it.
-  const { audit, events } = await boardExtra($, now - (REVIEW_DAYS + 1) * 86400000)
-  const review = routerReview(audit, events, now, REVIEW_DAYS)
+  // A day more of journal, so the first worker of the period still has the turn before it.
+  const { audit, workers, events } = await boardExtra($, now - (REVIEW_DAYS + 1) * 86400000)
+  const review = routerReview(audit, workers, events, now, REVIEW_DAYS)
   await update($, live, l => ({ ...l, review }))
 }
 

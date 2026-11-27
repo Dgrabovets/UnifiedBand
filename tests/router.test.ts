@@ -132,7 +132,7 @@ test('a dispatch joins the injected decision of its own session only', () => {
   expect(lastInjectedId(log, undefined)).toBe('r_b')
 })
 
-test('a finished worker is summed once per message id, recorded once, and joined to its launch row', () => {
+test('a finished worker is summed once per message id, joined to its launch row, and gives back what was recorded', () => {
   const block = (id: string, input: number, output: number) => JSON.stringify({ type: 'assistant', message: { id, model: 'claude-haiku-5-5', usage: { input_tokens: input, output_tokens: output, cache_read_input_tokens: 7 } } })
   // One response written as three content blocks, output growing while it streamed.
   const text = [block('m1', 10, 1), block('m1', 10, 4), block('m1', 10, 9), block('m2', 3, 2), JSON.stringify({ type: 'assistant', message: { model: '<synthetic>', usage: { input_tokens: 99 } } })].join('\n')
@@ -141,9 +141,12 @@ test('a finished worker is summed once per message id, recorded once, and joined
   expect(sumWorkerUsage('nothing')).toBe(null)
 
   const launch = JSON.stringify({ outcome: 'delegated', agent_id: 'a1', decision_id: 'r_1' })
-  expect(scanAuditTail(launch, 's', 'a1')).toEqual(['r_1', false])
-  expect(scanAuditTail(launch + '\n' + JSON.stringify({ outcome: 'worker_usage', agent_id: 'a1' }), 's', 'a1')).toEqual([null, true])
-  expect(scanAuditTail(JSON.stringify({ outcome: 'injected', session_id: 's', decision: { decision_id: 'r_9' } }), 's', 'zz')).toEqual(['r_9', false])
+  expect(scanAuditTail(launch, 's', 'a1')).toEqual(['r_1', null])
+  // A recorded worker gives back its id and totals, also when its launch row was written after them.
+  const done = JSON.stringify({ outcome: 'worker_usage', agent_id: 'a1', decision_id: 'r_1', usage: { tokens_out: 11 } })
+  expect(scanAuditTail(launch + '\n' + done, 's', 'a1')).toEqual(['r_1', { tokens_out: 11 }])
+  expect(scanAuditTail(done + '\n' + launch, 's', 'a1')).toEqual(['r_1', { tokens_out: 11 }])
+  expect(scanAuditTail(JSON.stringify({ outcome: 'injected', session_id: 's', decision: { decision_id: 'r_9' } }), 's', 'zz')).toEqual(['r_9', null])
 
   const row = buildStopRow({ agent_type: 'unified-band:router-haiku', agent_id: 'a1', session_id: 's' }, summed!, 'r_1', 'T')
   expect(row?.outcome).toBe('worker_usage')

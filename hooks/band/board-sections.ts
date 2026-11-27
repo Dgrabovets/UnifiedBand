@@ -52,7 +52,7 @@ body{background:#fff}footer{display:none}
 .grp{display:inline-flex;border:1px solid var(--line2);border-radius:11px;overflow:hidden;background:var(--track)}
 .grp button{border:0;border-left:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:13px;padding:8px 14px;cursor:pointer;white-space:nowrap}.grp button:first-child{border-left:0}.grp button:hover{background:var(--segOn)}
 .actions{flex-wrap:wrap;justify-content:flex-end}
-.panel{border:1px solid var(--line);border-radius:18px;padding:16px 18px;min-width:0}
+.panel{border:1px solid var(--line);border-radius:18px;padding:16px 18px;min-width:0}.sec-body>.panel+.panel{margin-top:12px}
 .panel-t{font-weight:600;font-size:14px}.panel-s{font-size:12px;color:var(--faint);margin:2px 0 12px}
 .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
 .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
@@ -308,11 +308,18 @@ function drawRouter() {
   var table = h('table', 'mx'); table.append(thead, body)
   var matrix = panel('Where prompts went', 'Rows are the model you were on, columns the model the router picked.', table,
     row('leg', [h('span', '', 'Stayed: ' + r.stayed + ' of ' + r.total + ' · ' + Math.round(r.stayed / r.total * 100) + '%'), h('span', '', 'Sent up: ' + r.up), h('span', '', 'Sent down: ' + r.down)]),
-    row('stats4', [stat('Saved, est.', money(r.saved), 'from down hops'), stat('Extra, est.', '+' + money(r.extra), 'from up hops'), stat('Avg confidence', r.avgConf == null ? '–' : (Math.round(r.avgConf * 100) / 100).toFixed(2), 'classifier score'), stat('Corrected by you', String(r.corrected), 'of ' + r.routed + ' routed')]),
-    h('div', 'note', 'Estimates, priced on ' + r.priced + ' of ' + r.routed + ' routed prompts. Baseline: your own model. The cost seen in the turn after each routed prompt is scaled by the price gap between the two models, so treat it as rough.'))
+    row('stats2', [stat('Avg confidence', r.avgConf == null ? '–' : (Math.round(r.avgConf * 100) / 100).toFixed(2), 'classifier score'), stat('Corrected by you', String(r.corrected), 'of ' + r.routed + ' routed')]))
+  var m = routerSavings(rows, scopeWk(), ev)
+  var gain = function (n) { return money(Math.abs(n)) + (n < 0 ? ' more' : ' saved') }
+  var tone = function (n) { return n < 0 ? C.red : n > 0 ? C.green : '' }
+  var autoText = !m.ran ? gain(0) : m.autoPriced ? gain(m.autoSaved) : '–', allText = m.priced ? gain(m.saved) : '–'
+  var some = function (priced, of) { return priced < of ? ', ' + priced + ' of ' + of + ' priced' : '' }
+  var savings = panel('Savings', 'What the workers’ own tokens cost, against the same tokens on the model the session was on.',
+    row('stats2', [stat('Auto-routed', autoText, m.ran + ' of ' + m.orders + ' orders ran on a worker' + some(m.autoPriced, m.autoWorkers), tone(m.autoSaved)), stat('All router workers', allText, 'auto and by name, ' + plural(m.finished, 'finished worker') + some(m.priced, m.finished), tone(m.saved))]),
+    h('div', 'note', 'An estimate: it assumes the session model would have used the same tokens, and counts cache writes at the 5-minute price. Advisor calls and the main session’s own work of sending a task are not counted.'))
   var last = panel('Last decisions', 'Click a column to sort. Sort by Move to see why the router changed the model.'), t = h('table', 'dt'), th = h('tr')
   var rank = function (m) { return r.order.indexOf(modelKey(m)) }, EFFORT = ['low', 'medium', 'high', 'xhigh', 'max']
-  var fixed = function (x) { return x.outcome !== 'silent' && x.outcome !== 'shadow' && models.some(function (m) { return m.session === x.session && m.ts > x.ts && m.ts - x.ts < 600000 }) }
+  var fixed = function (x) { return x.outcome === 'injected' && models.some(function (m) { return m.session === x.session && m.ts > x.ts && m.ts - x.ts < 600000 }) }
   var sortKey = function (x, k) { return k === 'ts' ? x.ts : k === 'parent' ? rank(x.parent) : k === 'model' ? rank(x.model) : k === 'move' ? rank(x.model) - rank(x.parent) : k === 'effort' ? EFFORT.indexOf(x.effort) : k === 'outcome' ? (fixed(x) ? 2 : x.outcome === 'silent' ? 0 : 1) : String(x.reason || '') }
   ;[['When', 'ts'], ['You were on', 'parent'], ['Sent to', 'model'], ['Move', 'move'], ['Effort', 'effort'], ['Outcome', 'outcome'], ['Why', 'reason']].forEach(function (c) {
     var on = state.rsort.k === c[1], cell = h('th', ''), btn = h('button', 'th-btn' + (on ? ' on' : ''), c[0] + (on ? (state.rsort.d > 0 ? ' ▲' : ' ▼') : '')); btn.type = 'button'
@@ -323,18 +330,19 @@ function drawRouter() {
   rows.slice().sort(function (a, c) { var x = sortKey(a, state.rsort.k), y = sortKey(c, state.rsort.k); return (x < y ? -1 : x > y ? 1 : c.ts - a.ts) * state.rsort.d }).slice(0, 10).forEach(function (x) {
     var fix = fixed(x), mv = rank(x.model) - rank(x.parent), tr = h('tr'), out = tr.appendChild(h('td'))
     tr.prepend(h('td', '', ago(x.ts)), h('td', '', cap(modelKey(x.parent))), h('td', '', cap(modelKey(x.model))), h('td', '', mv > 0 ? '↑ up' : mv < 0 ? '↓ down' : 'same'), h('td', '', x.effort || '–'))
-    out.append(tag(fix ? 'you switched back' : x.outcome === 'shadow' ? 'would route' : x.outcome === 'silent' ? 'kept' : 'routed', fix ? 'warn' : x.outcome === 'silent' || x.outcome === 'shadow' ? '' : 'ok')); tr.append(h('td', 'why', (HINTS[x.hint] ? HINTS[x.hint] + ' · ' : '') + (x.reason || '')))
+    var said = x.outcome === 'shadow' ? 'would route' : x.outcome === 'silent' ? 'kept' : x.outcome === 'plan_mode' ? 'plan mode' : x.ran ? 'ran on a worker' : 'order, not run'
+    out.append(tag(fix ? 'you switched back' : said, fix ? 'warn' : x.ran ? 'ok' : '')); tr.append(h('td', 'why', (HINTS[x.hint] ? HINTS[x.hint] + ' · ' : '') + (x.reason || '')))
     tb.append(tr)
   })
   last.append(t, h('div', 'note', 'The router logs your model, the chosen model, effort, outcome and reason. A /model within ten minutes of a routed prompt counts as a correction.'))
   var rep = routerReport(rows, scopeWk(), ev), secs = function (ms) { return ms == null ? '–' : ms < 60000 ? Math.round(ms / 1000) + 's' : dur(Math.round(ms / 60000)) }
   var wtok = Object.keys(rep.workers.tokens).map(function (k) { return cap(k) + ' ' + tok(rep.workers.tokens[k].input + rep.workers.tokens[k].output) }).join(' · ')
   var report = panel('Router report', 'The three goals of the original router report, from your own log.',
-    row('stats4', [stat('Cost', money(r.saved - r.extra), 'saved net, est.', r.saved >= r.extra ? C.green : C.red), stat('Corrected', pct(rep.sent.fixedPct) + ' / ' + pct(rep.kept.fixedPct), 'routed / kept prompts'), stat('Time to result', secs(rep.sent.ms) + ' / ' + secs(rep.kept.ms), 'routed / kept, first turn'), stat('Workers', String(rep.workers.launched), rep.workers.failed ? rep.workers.failed + ' failed' : wtok || 'none launched')]),
+    row('stats3', [stat('Corrected', pct(rep.sent.fixedPct) + ' / ' + pct(rep.kept.fixedPct), 'routed / kept prompts'), stat('Time to result', secs(rep.sent.ms) + ' / ' + secs(rep.kept.ms), 'routed / kept, first turn'), stat('Workers', String(rep.workers.launched), rep.workers.failed ? rep.workers.failed + ' failed' : wtok || 'none launched')]),
     row('leg', Object.keys(rep.tiers).sort(function (a, c) { return rep.tiers[c] - rep.tiers[a] }).map(function (k) { return h('span', '', cap(k) + ': ' + rep.tiers[k]) }).concat(rep.fanout ? [h('span', '', 'Fan-out: ' + rep.fanout)] : [])),
     rep.tips.length ? row('tips', rep.tips.map(function (x) { return h('div', 'note', x) })) : h('div', 'note', 'Nothing to change yet: the log shows no pattern that needs a rule.'))
-  b.append(matrix, report, last)
-  setExport('router', 'Model Router',['You were on', 'Sent to', 'Count'], Object.keys(r.matrix).map(function (k) { var p = k.split('>'); return [cap(p[0]), cap(p[1]), String(r.matrix[k])] }).concat([['Saved, est.', '', money(r.saved)], ['Extra, est.', '', money(r.extra)], ['Corrected by you', '', String(r.corrected)], ['Corrected, routed', '', pct(rep.sent.fixedPct)], ['Corrected, kept', '', pct(rep.kept.fixedPct)], ['Workers launched', '', String(rep.workers.launched)]].concat(rep.tips.map(function (x) { return ['Tip', '', x] }))))
+  b.append(savings, matrix, report, last)
+  setExport('router', 'Model Router',['You were on', 'Sent to', 'Count'], Object.keys(r.matrix).map(function (k) { var p = k.split('>'); return [cap(p[0]), cap(p[1]), String(r.matrix[k])] }).concat([['Orders sent', '', String(m.orders)], ['Orders that ran on a worker', '', String(m.ran)], ['Auto-routed, est.', '', autoText], ['All router workers, est.', '', allText], ['Finished workers priced', '', m.priced + ' of ' + m.finished], ['Corrected by you', '', String(r.corrected)], ['Corrected, routed', '', pct(rep.sent.fixedPct)], ['Corrected, kept', '', pct(rep.kept.fixedPct)], ['Workers launched', '', String(rep.workers.launched)]].concat(rep.tips.map(function (x) { return ['Tip', '', x] }))))
 }
 
 // ---- plans ----------------------------------------------------------------------------------------------------------
@@ -439,7 +447,8 @@ function rawData() {
     schema: {
       tasks: 'one row per session: key, started (local), project, cost in USD (API price, not a bill), turns, agentMinutes, tokens, reuse percent or null, tests, level, model',
       events: 'journal, one object per event. t=turn: ts, session, project, ms, cost, turns, level, model, ctx percent, five and seven limit percent with their reset times, compactions, cache percent, tests, reused, created, callers, edits, plan {done,total}, router. t=prompt: words, neg (a short push back). t=compact: ctx. t=model: a /model command. t=run: kind review or audit, findings, high. t=agent: subagent turn, tokens',
-      router: 'one object per classified prompt: ts, session, parent (your model), model (chosen), effort, tier, conf, outcome (silent or routed), reason'
+      router: 'one object per classified prompt: ts, session, parent (your model), model (chosen), effort, tier, conf, outcome (silent, injected, shadow or plan_mode), ran (an injected order started a worker), reason',
+      workers: 'router workers: ts, session, outcome (delegated, delegated_failed or worker_usage, the newest usage per worker), model, actual, auto (started by an order), parent, token totals fresh, write, read, output'
     },
     config: CFG,
     tasks: tasks.map(function (t) {

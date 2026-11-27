@@ -35,6 +35,69 @@ export async function routerLogPath($: EngineInterface) {
   return `${(await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${home}/.claude`}/cache/router/audit.jsonl`
 }
 
+type LogRow = { [field: string]: any }
+
+const isLaunch = (r: LogRow) => r.kind === 'router' && (r.outcome === 'delegated' || r.outcome === 'delegated_failed' || r.outcome === 'worker_usage')
+
+// The router's log, linked: the prompts it classified and what its workers did.
+// An order ran when a worker with its id shows up before the session's next prompt and before the log closed it as inline:
+// a later worker started by name gets the same id and must not count.
+export function routerRows(log: LogRow[]) {
+  const rows = log.map(r => ({ ...r, ts: Date.parse(r.ts) }) as LogRow).sort((a, b) => a.ts - b.ts)
+  const ran = new Set<LogRow>()
+  const auto = new Set<LogRow | string>()
+  rows.forEach((order, at) => {
+    const id = order.decision?.decision_id
+    if (order.outcome !== 'injected' || !id) return
+    for (let i = at + 1; i < rows.length; i++) {
+      const r = rows[i] as LogRow
+      if (r.decision && r.session_id === order.session_id) break
+      if (r.decision_id !== id) continue
+      if (r.outcome === 'auto_inline_unattributed' && !ran.has(order)) break
+      if (!isLaunch(r) || r.outcome === 'delegated_failed') continue
+      ran.add(order)
+      auto.add(r.agent_id ?? r)
+    }
+  })
+
+  // A continued worker stops again with larger totals: only its newest usage row counts.
+  const newest = new Map<string, LogRow>()
+  for (const r of rows) if (r.outcome === 'worker_usage' && r.agent_id) newest.set(r.agent_id, r)
+  // A launch row names no session, the worker's usage row does.
+  const sessions = new Map([...newest].map(([agent, r]) => [agent, r.session_id]))
+
+  const parents = new Map<string, string>()
+  const audit: LogRow[] = []
+  const workers: LogRow[] = []
+  for (const r of rows) {
+    if (r.decision) {
+      const d = r.decision
+      parents.set(r.session_id, d.parent)
+      audit.push({ ts: r.ts, session: r.session_id, parent: d.parent, model: d.model, effort: d.effort, tier: d.tier, conf: d.confidence, outcome: r.outcome, hint: r.outcome_hint, reason: d.reason, fanout: d.fanout === true, ran: ran.has(r) })
+    } else if (isLaunch(r) && !(r.outcome === 'worker_usage' && r.agent_id && newest.get(r.agent_id) !== r)) {
+      const session = r.session_id ?? sessions.get(r.agent_id)
+      const u = r.usage ?? {}
+      workers.push({ ts: r.ts, session, outcome: r.outcome, model: r.model, actual: r.model_actual, ms: r.duration_ms, agent: r.agent_id, auto: auto.has(r.agent_id ?? r), parent: parents.get(session), fresh: u.tokens_in ?? 0, write: u.cache_write ?? 0, read: u.cache_read ?? 0, output: u.tokens_out ?? 0, input: (u.tokens_in ?? 0) + (u.cache_write ?? 0) })
+    }
+  }
+  return { audit, workers }
+}
+
+// The router's log with its rotated files, oldest first. A file that cannot be read counts as empty.
+async function routerLog($: EngineInterface): Promise<LogRow[]> {
+  const current = await routerLogPath($)
+  const dir = current.slice(0, current.lastIndexOf('/'))
+  const rotated = (await $.fs.list(dir).catch(() => [])).filter(x => x.kind === 'file' && /^audit\.jsonl\.\d{8}T\d{6}Z$/.test(x.name)).map(x => x.name).sort()
+  const texts = await Promise.all([...rotated.map(name => `${dir}/${name}`), current].map(file => $.fs.read(file).catch(() => '')))
+  return texts.flatMap(text => (text as string).split('\n').flatMap(line => {
+    try {
+      return [JSON.parse(line)]
+    } catch {
+      return []
+    }
+  }))
+}
+
 // What the Board adds to the task ledger: the journal, the router's decisions and the owner's board.json.
 // shortcut: reads whole files; $.fs.read refuses one over 4 MiB, so an oversize router log is left out.
 // `since` skips the journal files of earlier days, for a reader that needs recent history only.
@@ -49,21 +112,7 @@ export async function boardExtra($: EngineInterface, since = 0) {
       } catch {}
     }
   }
-  const log = ((await $.fs.read(await routerLogPath($)).catch(() => '')) as string).split('\n').flatMap(line => {
-    try {
-      return [JSON.parse(line)]
-    } catch {
-      return []
-    }
-  })
-  // Outcome rows (a delegated worker, a reconciled decision) carry no decision and are not prompts.
-  const audit = log
-    .filter(r => r.decision)
-    .map(r => ({ ts: Date.parse(r.ts), session: r.session_id, parent: r.decision?.parent, model: r.decision?.model, effort: r.decision?.effort, tier: r.decision?.tier, conf: r.decision?.confidence, outcome: r.outcome, hint: r.outcome_hint, reason: r.decision?.reason, fanout: r.decision?.fanout === true }))
-  // What the delegated workers did: the launch row (duration) and the usage row of a finished worker.
-  const workers = log
-    .filter(r => r.kind === 'router' && (r.outcome === 'delegated' || r.outcome === 'delegated_failed' || r.outcome === 'worker_usage'))
-    .map(r => ({ ts: Date.parse(r.ts), session: r.session_id, outcome: r.outcome, model: r.model, actual: r.model_actual, ms: r.duration_ms, input: (r.usage?.tokens_in ?? 0) + (r.usage?.cache_write ?? 0), output: r.usage?.tokens_out ?? 0 }))
+  const { audit, workers } = routerRows(await routerLog($))
   // A broken board.json costs only the config, not the journal and the router log.
   const config = await $.fs.read(`${dir}/board.json`).then(JSON.parse).catch(() => ({}))
   return { events: events.sort((a, b) => ((a as Ev).ts ?? 0) - ((b as Ev).ts ?? 0)), audit, workers, config }

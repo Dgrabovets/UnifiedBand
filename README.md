@@ -53,7 +53,7 @@ Built and tested on Claude Code 2.1.302. The band and the Board need a build wit
 
 - **Level buttons**: Off, Lite, Full, Ultra. The current level is highlighted.
 - **Action buttons**: Review, Audit, Router, Board and Compact. Compact leaves only the buttons.
-- **Router** opens the router review in place of the session lines and meters, and closes it on the next press: the estimated net saving of the last 30 days, how many routed prompts it could price, and your corrections. It is worked out on your machine from the router's log and the journal, with no model call and no tokens. It also refreshes when a session starts and when the Board is opened, and the Model Router fact then leads with the estimate.
+- **Router** opens the router review in place of the session lines and meters, and closes it on the next press: two lines on the last 30 days: how many routing orders really ran on a worker and what they saved, and what all router workers (started by an order or by name) saved or cost against the session's model. The figures are an estimate from the workers' own token counts, worked out on your machine from the router's log and the journal, with no model call and no tokens. The review also refreshes when a session starts and when the Board is opened, and the Model Router fact then leads with what all workers saved or cost.
 - **Session**: the branch (or the folder), session age and prompt count.
 - **Meters**: Context, 5-Hour Limit and Weekly Limit, the two limits with their reset times.
 - **Facts**: Tests, Reuse (with callers left open), Model Router (the last decision of this session) and Project (plan progress).
@@ -70,7 +70,7 @@ Press **Board** and a single local page opens, rebuilt from the task ledger, the
 <table>
   <tr>
     <td width="50%"><a href="docs/images/overview.png"><img src="docs/images/overview.png" alt="Overview with four cards, a stacked chart and the projects table"></a><br><b>Overview</b><br>Sessions, agent time, cost and tokens, a stacked chart by project, and the Activity honeycomb. Pick 7d, 30d, 90d or All.</td>
-    <td width="50%"><a href="docs/images/router.png"><img src="docs/images/router.png" alt="The Model Router section with a matrix and a sortable list of decisions"></a><br><b>Model Router</b><br>A matrix from your model to the one the router picked, a savings estimate, and a sortable list of decisions with a Move column.</td>
+    <td width="50%"><a href="docs/images/router.png"><img src="docs/images/router.png" alt="The Model Router section with a matrix and a sortable list of decisions"></a><br><b>Model Router</b><br>What the router's workers saved or cost, a matrix from your model to the one the router picked, and a sortable list of decisions with a Move column.</td>
   </tr>
   <tr>
     <td width="50%"><a href="docs/images/context.png"><img src="docs/images/context.png" alt="Context and limits with fill curves and window peaks"></a><br><b>Context and limits</b><br>Context fill curves, life before a compaction, 5-hour window peaks, burn rate and a weekly forecast.</td>
@@ -84,7 +84,7 @@ Press **Board** and a single local page opens, rebuilt from the task ledger, the
 - **Projects** (on the Overview page, above Activity) is one table that is also the chart's legend: a click on a row shows or hides a project. Filters pick a category (Large, Medium, Small, Chats), scored from turns, cost, sessions, days of work and whether a project has a `PLAN.md`. A Large project opens its own page with every section filtered to it.
 - **Context and limits**: context fill curves, fill rate, life before compaction, 5-hour window peaks, burn rate, weekly forecast, blocks.
 - **Reuse** (how well Ponytail keeps code small), **Plans** (burn-up, velocity, projects without a plan), **Review and Audit**, and **Extras** (cache, tests, cost by model, working hours, expensive sessions, push backs, subagents).
-- **Model Router**: the matrix, saved and extra cost estimates with their baseline (the same work kept on your own model), a router report (corrections routed against kept, time to result, workers and their tokens, tier mix, tips) and the last decisions with the reason for each. Shadow mode rows show as "would route".
+- **Model Router**: savings measured from the workers' tokens against the same tokens on the session's model (orders that ran, and all router workers), the matrix, a router report (corrections routed against kept, time to result, workers and their tokens, tier mix, tips) and the last decisions with the reason for each. Shadow mode rows show as "would route".
 - **Pages**: the sections are tabs, one page at a time. A project switcher in the header picks all projects or one of the large ones.
 - **Chats**: ad hoc chats (the app's `spare-*` and `scratch-*` folders, `sandbox`, a drive root) form one group, counted in sessions and never opened one by one.
 - **Share** holds the Share card and Copy summary, a short Markdown report on the clipboard. **Export** opens a dialog: pick sections and options on the left, a format on the right (PDF, Markdown or Raw data), then Download. Every section also has its own Export (PDF, Markdown, CSV). PDF opens the browser's print dialog: choose "Save as PDF".
@@ -110,7 +110,7 @@ The dashboard is called Unified Band, with a hexagon-and-bars mark of its own.
 
 ## Model router
 
-A prompt hook classifies every prompt (tier and effort) with heuristics. When the chosen tier is strictly cheaper than the session's own model, the prompt is delegated to a worker agent (`unified-band:router-haiku`, `-sonnet`, `-opus`, `-fable`). Plan-mode and multi-part prompts fan out in parallel waves that never write the same file (skills `auto-model-routing` and `plan-with-models`). Hooks on Agent calls, subagent stops and turn ends write the outcomes to `~/.claude/cache/router/audit.jsonl`, the same log and line format the original wrote; the band and the Board read it.
+A prompt hook classifies every prompt (tier and effort) with heuristics. When the chosen tier is strictly cheaper than the session's own model, the prompt is delegated to a worker agent (`unified-band:router-haiku`, `-sonnet`, `-opus`, `-fable`). Plan-mode and multi-part prompts fan out in parallel waves that never write the same file (skills `auto-model-routing` and `plan-with-models`). Hooks on Agent calls, subagent stops and turn ends write the outcomes to `~/.claude/cache/router/audit.jsonl`, the same log and line format the original wrote; the band and the Board read it. One difference: a worker that is continued gets a second `worker_usage` row with its larger totals. The Board counts only the newest; the original's reports would count both.
 
 - Skills: `/unified-band:route <prompt>` shows how a prompt classifies, `/unified-band:route-status` lists recent decisions.
 - Russian: unlike the original, which knew English words only, the classifier also reads Russian task words (rewrite, refactor, implement, design, investigate, "show me", "for each" and so on), so a hard Russian task is not mistaken for a moderate one. `tests/router-russian.test.ts` keeps the rule that a Russian prompt gets the decision of its English translation.
@@ -120,6 +120,7 @@ A prompt hook classifies every prompt (tier and effort) with heuristics. When th
 - Settings by environment: `CC_ROUTER_CACHE_DIR`, `CC_ROUTER_GLOBAL_CONFIG`, `CC_ROUTER_ROUTE_FLOOR`, `CC_ROUTER_CTX_WARN`, `CC_ROUTER_AUDIT_MAX_BYTES`, `CC_ROUTER_AUDIT_RETAIN_DAYS`. The cache folder is under `CLAUDE_CONFIG_DIR` when that is set, else `~/.claude`.
 - **Both installed:** when the original `auto-model-router` plugin is enabled (`enabledPlugins` in the user, project or local settings), every router hook here does nothing and the original keeps working, so nothing runs twice. Disable it to switch to the built-in router.
 - Not ported: `/router-report`, `tools/usage-report.py`, `tools/analyze-audit.py`, `tools/replay_session_pivot.py`, `bin/cc-route` and the price table. They are reporting and launcher tools built on 1,500 lines of Python; the Board's Model Router page, with its router report, covers decisions, corrections, workers and estimated savings.
+- Heuristic routing picks Opus or Sonnet, and only a cheaper model than the session's is ever ordered. On a Sonnet session nothing is therefore routed automatically unless a `router.json` rule, `#model=` or a lower `CC_ROUTER_ROUTE_FLOOR` (below 0.55) sends it to Haiku.
 
 The classifier is checked against the Python original: `tests/router-fixture.ts` holds 232 prompt cases generated from it, and `node scripts/router-differential.mjs <original plugin folder> --hooks` runs both implementations end to end.
 
