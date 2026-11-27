@@ -112,50 +112,92 @@ export function reuseStats(tasks, turns) {
 
 // ---- model router ---------------------------------------------------------------------------------------------------
 const MODEL_ORDER = ['haiku', 'sonnet', 'opus', 'fable']
-// Rough blended price per million tokens (input and output averaged), enough to rank a hop as cheaper or dearer.
-// The 5.5 prices of hooks/ponytail-band-import.js; Fable 5.2 as agents/router-fable.md states it ($8 and $40).
-const PRICE = { haiku: 0.3, sonnet: 6, opus: 12, fable: 24 }
+// USD per million tokens: [input, 5-minute cache write, 1-hour cache write, cache read, output].
+// The same figures as PRICES in hooks/ponytail-band-import.js; scripts/repair-check.mjs keeps the two equal.
+const OPUS_PRICE = [5, 6.25, 10, 0.5, 25]
+export const LIST_PRICE = {
+  'claude-fable-5-2': [8, 10, 16, 0.2, 40],
+  'claude-fable-5-1': [10, 12.5, 20, 0.25, 50],
+  'claude-fable-5': [10, 12.5, 20, 1, 50],
+  'claude-opus-5-5': [4, 5, 8, 0.2, 20],
+  'claude-opus-5': OPUS_PRICE,
+  'claude-opus-4-8': OPUS_PRICE,
+  'claude-opus-4-7': OPUS_PRICE,
+  'claude-opus-4-6': OPUS_PRICE,
+  'claude-opus-4-5': OPUS_PRICE,
+  'claude-sonnet-5-5': [2, 2.5, 4, 0.1, 10],
+  'claude-sonnet-5': [2, 2.5, 4, 0.2, 10],
+  'claude-sonnet-4-6': [3, 3.75, 6, 0.3, 15],
+  'claude-sonnet-4-5': [3, 3.75, 6, 0.3, 15],
+  'claude-haiku-5-5': [0.1, 0.125, 0.2, 0.01, 0.5],
+  'claude-haiku-4-5': [1, 1.25, 2, 0.1, 5],
+}
+// Haiku 5.5 on prompts over 100,000 tokens. The log sums a worker's requests, so a Haiku worker is priced at this
+// higher rate: a saving is never overstated.
+export const HAIKU_LONG = [0.5, 0.625, 1, 0.05, 2.5]
+// The model a family name stands for when the journal does not know the session's.
+const CURRENT = { haiku: 'claude-haiku-5-5', sonnet: 'claude-sonnet-5-5', opus: 'claude-opus-5-5', fable: 'claude-fable-5-2' }
 // The one place a model id becomes a family, for every tab: aliases, dated, regional and [1m] ids alike. Mythos ids are Fable.
 export function modelKey(s) { s = String(s || '').toLowerCase().replace('mythos', 'fable'); for (var i = 0; i < MODEL_ORDER.length; i++) if (s.indexOf(MODEL_ORDER[i]) >= 0) return MODEL_ORDER[i]; return s || 'unknown' }
 export function routerStats(rows, events) {
-  var order = MODEL_ORDER.slice(0, 3), matrix = {}, stayed = 0, up = 0, down = 0, routed = 0, shadow = 0, corrected = 0, priced = 0, saved = 0, extra = 0, conf = []
+  var order = MODEL_ORDER.slice(0, 3), matrix = {}, stayed = 0, up = 0, down = 0, routed = 0, shadow = 0, corrected = 0, conf = []
   rows.forEach(function (r) { [modelKey(r.parent), modelKey(r.model)].forEach(function (m) { if (order.indexOf(m) < 0) order.push(m) }) })
-  var turns = bySession(ofType(events, 'turn')), models = bySession(ofType(events, 'model'))
+  var models = bySession(ofType(events, 'model'))
   rows.forEach(function (r) {
     var from = modelKey(r.parent), to = modelKey(r.model), key = from + '>' + to
     matrix[key] = (matrix[key] || 0) + 1
     var d = order.indexOf(to) - order.indexOf(from)
     if (d === 0) stayed++; else if (d > 0) up++; else down++
     if (r.conf) conf.push(r.conf)
-    if (r.outcome === 'silent') return
-    if (r.outcome === 'shadow') { shadow++; return }
+    if (r.outcome === 'shadow') shadow++
+    // Only an order to start a worker counts as routed: a silent or plan-mode row sent nothing.
+    if (r.outcome !== 'injected') return
     routed++
     if ((models[r.session] || []).some(function (m) { return m.ts > r.ts && m.ts - r.ts < 600000 })) corrected++
-    // The turn that followed the decision: its cost times the price ratio is what the hop saved or added.
-    var list = turns[r.session] || [], prev = null, next = null
-    for (var i = 0; i < list.length; i++) { if (list[i].ts <= r.ts) prev = list[i]; else { next = list[i]; break } }
-    if (next && prev && PRICE[from] && PRICE[to]) {
-      priced++
-      var delta = Math.max(0, next.cost - prev.cost), change = delta * (PRICE[to] / PRICE[from] - 1)
-      if (change < 0) saved += -change; else extra += change
-    }
   })
-  return { order: order, matrix: matrix, total: rows.length, stayed: stayed, up: up, down: down, routed: routed, shadow: shadow, corrected: corrected, priced: priced, saved: saved, extra: extra, avgConf: mean(conf) }
+  return { order: order, matrix: matrix, total: rows.length, stayed: stayed, up: up, down: down, routed: routed, shadow: shadow, corrected: corrected, avgConf: mean(conf) }
 }
 
-// The band's router review of the last `days`: the Board's own estimate, from the router's log and the journal alone.
-export function routerReview(audit, events, now, days) {
-  var since = now - days * DAYMS, r = routerStats(audit.filter(function (a) { return a.ts >= since }), events)
-  return { days: days, total: r.total, routed: r.routed, corrected: r.corrected, priced: r.priced, saved: r.saved, extra: r.extra }
+// USD for one worker's token totals at a price row.
+export function tokenCost(price, w) { return (w.fresh * price[0] + w.write * price[1] + w.read * price[3] + w.output * price[4]) / 1e6 }
+export function priceId(id) { return String(id || '').replace(/\[.*\]$/, '').replace(/-\d{8}$/, '') }
+// What the finished workers cost against the same tokens on the model their session was on. saved is below zero when
+// the workers cost more. A worker whose model or session model has no price is counted as finished, not priced.
+export function routerSavings(rows, workers, events) {
+  var turns = bySession(ofType(events, 'turn').filter(function (t) { return t.model }))
+  var orders = rows.filter(function (r) { return r.outcome === 'injected' })
+  var out = { orders: orders.length, ran: orders.filter(function (r) { return r.ran }).length, finished: 0, priced: 0, saved: 0, autoWorkers: 0, autoPriced: 0, autoSaved: 0 }
+  workers.forEach(function (w) {
+    if (w.outcome !== 'worker_usage') return
+    out.finished++
+    if (w.auto) out.autoWorkers++
+    var before = (turns[w.session] || []).filter(function (t) { return t.ts <= w.ts }).pop()
+    var used = priceId(w.actual || CURRENT[modelKey(w.model)]), session = priceId(before ? before.model : CURRENT[modelKey(w.parent)])
+    var price = used === 'claude-haiku-5-5' ? HAIKU_LONG : LIST_PRICE[used], base = LIST_PRICE[session]
+    if (!price || !base) return
+    var gain = tokenCost(base, w) - tokenCost(price, w)
+    out.priced++; out.saved += gain
+    if (w.auto) { out.autoPriced++; out.autoSaved += gain }
+  })
+  return out
+}
+
+// The band's router review of the last `days`, from the router's log and the journal alone.
+export function routerReview(audit, workers, events, now, days) {
+  var since = now - days * DAYMS, recent = function (x) { return x.ts >= since }
+  var rows = audit.filter(recent), stats = routerStats(rows, events), out = routerSavings(rows, workers.filter(recent), events)
+  out.days = days; out.total = stats.total; out.corrected = stats.corrected
+  return out
 }
 
 // The router report: the three goals of the original /router-report, from the audit log and the journal.
-// Cost is routerStats' saved and extra; this adds quality (corrections, routed against kept), time (first turn after a decision), workers and tips.
+// Cost is routerSavings; this adds quality (corrections, routed against kept), time (first turn after a decision), workers and tips.
 export function routerReport(rows, workers, events) {
   var turns = bySession(ofType(events, 'turn')), models = bySession(ofType(events, 'model'))
   var kept = { n: 0, fixed: 0, ms: [] }, sent = { n: 0, fixed: 0, ms: [] }, tiers = {}, fanout = 0, catchAll = 0
   rows.forEach(function (r) {
-    var g = r.outcome === 'silent' || r.outcome === 'shadow' ? kept : sent
+    // A plan-mode prompt was neither sent nor kept: the planner picks each step's model.
+    var g = r.outcome === 'injected' ? sent : r.outcome === 'silent' || r.outcome === 'shadow' ? kept : { n: 0, fixed: 0, ms: [] }
     g.n++
     tiers[r.tier || 'unknown'] = (tiers[r.tier || 'unknown'] || 0) + 1
     if (r.fanout) fanout++
@@ -300,7 +342,7 @@ export function maskTree(node, map, keys) {
 
 // What the page runs: the constants as text, then every function above as it was written.
 export const STATS_SRC = [
-  'var DAYMS = ' + DAYMS + ', HOURMS = ' + HOURMS + ', MODEL_ORDER = ' + JSON.stringify(MODEL_ORDER) + ', PRICE = ' + JSON.stringify(PRICE),
+  'var DAYMS = ' + DAYMS + ', HOURMS = ' + HOURMS + ', MODEL_ORDER = ' + JSON.stringify(MODEL_ORDER) + ', LIST_PRICE = ' + JSON.stringify(LIST_PRICE) + ', HAIKU_LONG = ' + JSON.stringify(HAIKU_LONG) + ', CURRENT = ' + JSON.stringify(CURRENT),
   String(two),
   String(dkey),
   String(mondayKey),
@@ -316,6 +358,9 @@ export const STATS_SRC = [
   String(reuseStats),
   String(modelKey),
   String(routerStats),
+  String(tokenCost),
+  String(priceId),
+  String(routerSavings),
   String(routerReport),
   String(planStats),
   String(runStats),

@@ -1,6 +1,6 @@
 {
   "name": "unified-band",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Ponytail mode and skills, the model router (cheaper worker agents for routable prompts) and one band above the prompt: controls, session info, tests, limits, model router and project completion.",
   "types": "./types/index.d.ts",
   "userConfig": {

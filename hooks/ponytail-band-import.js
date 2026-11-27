@@ -15,11 +15,12 @@ const { getClaudeDir } = require('./ponytail-config');
 const CSV_HEADER = 'key,started,project,name,cost_usd,turns,agent_minutes,tokens_total,tokens_output,reuse_pct,reused,new,callers_open,tests,level,model';
 
 // USD per million tokens from https://platform.claude.com/docs/en/about-claude/pricing, checked
-// 2026-10-17: [input, 5-minute cache write, 1-hour cache write, cache read, output]. Opus 5.5 and
+// 2026-11-27: [input, 5-minute cache write, 1-hour cache write, cache read, output]. Opus 5.5 and
 // Fable 5.1 also match Claude Code's own totals in real transcripts. A model missing here, or a
 // fast-mode reply, gets no estimate: an empty cost beats a guessed one.
 const OPUS = [5, 6.25, 10, 0.5, 25];
 const PRICES = {
+  'claude-fable-5-2': [8, 10, 16, 0.2, 40],
   'claude-fable-5-1': [10, 12.5, 20, 0.25, 50],
   'claude-fable-5': [10, 12.5, 20, 1, 50],
   'claude-opus-5-5': [4, 5, 8, 0.2, 20],
@@ -46,9 +47,9 @@ function replyCost(model, u) {
   let p = PRICES[modelId(model)];
   if (!p || u.speed === 'fast') return null;
   const cc = u.cache_creation || {};
-  const split = cc.ephemeral_5m_input_tokens !== undefined || cc.ephemeral_1h_input_tokens !== undefined;
-  const w5 = split ? cc.ephemeral_5m_input_tokens || 0 : u.cache_creation_input_tokens || 0;
-  const w1 = split ? cc.ephemeral_1h_input_tokens || 0 : 0;
+  const w1 = cc.ephemeral_1h_input_tokens || 0;
+  // The split can cover only one pass of a reply that took several, so the total decides what is not a 1-hour write.
+  const w5 = Math.max(cc.ephemeral_5m_input_tokens || 0, (u.cache_creation_input_tokens || 0) - w1);
   const input = u.input_tokens || 0;
   const read = u.cache_read_input_tokens || 0;
   if (modelId(model) === 'claude-haiku-5-5' && input + read + w5 + w1 > 100000) p = HAIKU_55_LONG;
@@ -347,7 +348,7 @@ function repairModels() {
   return { missing, filled };
 }
 
-module.exports = { CSV_HEADER, PRICES, replyCost, sessionStats, sessionModels, missingModel, csvRow, mergeRows, readRecords, run, repairModels };
+module.exports = { CSV_HEADER, PRICES, HAIKU_55_LONG, replyCost, sessionStats, sessionModels, missingModel, csvRow, mergeRows, readRecords, run, repairModels };
 
 if (require.main === module) {
   if (process.argv[2] !== '--repair') {

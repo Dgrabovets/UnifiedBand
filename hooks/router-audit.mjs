@@ -166,22 +166,23 @@ export function sumWorkerUsage(text) {
   return [totals, model]
 }
 
-// [decision_id of the worker's launch row, already recorded]: a worker with a worker_usage row is not recorded twice.
-// With no launch row the session's newest injected decision stands in.
+// [decision_id for the worker's row, the usage already recorded for it or null].
+// With no row of the worker the session's newest injected decision stands in.
 export function scanAuditTail(text, sessionId, agentId) {
   let fallback = null
+  let launch = null
   for (const line of lines(text).reverse()) {
     const rec = parseLine(line)
     if (!isObject(rec)) continue
     if (agentId && rec.agent_id === agentId) {
-      if (rec.outcome === 'worker_usage') return [null, true]
-      return [rec.decision_id ?? null, false]
+      if (rec.outcome === 'worker_usage') return [rec.decision_id ?? null, rec.usage ?? {}]
+      launch ??= rec
     }
     if (fallback === null && rec.outcome === 'injected' && (sessionId == null || rec.session_id === sessionId)) {
       fallback = (isObject(rec.decision) ? rec.decision : {}).decision_id ?? null
     }
   }
-  return [fallback, false]
+  return [launch ? launch.decision_id ?? null : fallback, null]
 }
 
 // SubagentStop: the row for a finished router worker. null for any other agent.

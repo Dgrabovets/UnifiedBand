@@ -73,13 +73,23 @@ async function toggleReview($: EngineInterface) {
   await update($, live, l => ({ ...l, reviewOpen: open }))
 }
 
-// The three lines of the router review.
+// A saving, or what was spent on top: the figure and which way it went.
+const gain = (n: number) => `${money(Math.abs(n))} ${n < 0 ? 'More' : 'Saved'}`
+
+// The three lines of the router review: what the router's orders did, what all its workers did, and what the figures are.
 function reviewLines(r: Live['review']): string[] {
   const days = `Last ${r?.days ?? 30} Days`
-  if (r === undefined || r.total === 0) return [`Router Review · ${days}`, 'No Router Decisions Recorded In This Period', ' ']
-  const none = r.routed === 0 ? 'Nothing Was Routed' : 'No Routed Prompt Has The Turns To Price It'
-  const saving = r.priced > 0 ? `Estimated Net Saving ${money(r.saved - r.extra)} (Saved ${money(r.saved)}, Extra ${money(r.extra)}) · Priced ${r.priced} Of ${r.routed}` : `No Estimate: ${none}`
-  return [`Router Review · ${days} · ${r.routed} Routed Of ${r.total} Prompts · ${r.corrected} Corrected By You`, saving, 'Baseline: The Same Work Kept On Your Model · From Local Logs, No Model Call']
+  // A review kept from an older version of the band has other fields.
+  if (r?.orders === undefined || (r.total === 0 && r.finished === 0)) return [`Router Review · ${days}`, 'No Router Decisions Recorded In This Period', ' ']
+  const some = (priced: number, of: number) => (priced < of ? ` (${priced} Of ${of} Priced)` : '')
+  const auto = r.ran === 0 ? `${money(0)} Saved` : r.autoPriced > 0 ? `${gain(r.autoSaved)}${some(r.autoPriced, r.autoWorkers)}` : 'Not Priced'
+  const against = `${money(Math.abs(r.saved))} ${r.saved < 0 ? 'More' : 'Less'} Than On The Session Model`
+  const all = r.finished === 0 ? 'None Finished' : r.priced === 0 ? `${r.finished} Finished, Not Priced` : against + some(r.priced, r.finished)
+  return [
+    r.orders === 0 ? 'Auto-Routed: No Orders Sent' : `Auto-Routed: ${r.ran} Of ${r.orders} Orders Ran On A Worker · ${auto}`,
+    `All Router Workers, Auto And By Name: ${all}`,
+    `Router Review · ${days} · ${r.corrected} Corrected By You · Estimate From Worker Tokens, Local Logs, No Model Call`,
+  ]
 }
 
 export const register: Register = (on, options) => {
@@ -168,7 +178,7 @@ export const register: Register = (on, options) => {
     const review = l.reviewOpen ? (
       <Box flexDirection="column" paddingX={1}>
         {reviewLines(l.review).map((line, i) => (
-          <Text key={`review-${i}`} bold={i === 1} dimColor={i === 2} wrap="truncate-end">
+          <Text key={`review-${i}`} bold={i < 2} dimColor={i === 2} wrap="truncate-end">
             {line}
           </Text>
         ))}
@@ -226,8 +236,8 @@ export const register: Register = (on, options) => {
       : router
         ? 'Log Exists, None This Session'
         : 'Router Has Not Run'
-    const net = l.review && l.review.priced > 0 ? l.review.saved - l.review.extra : undefined
-    const saved = net === undefined ? '' : `${net < 0 ? 'Extra' : 'Saved'} ~${money(Math.abs(net))} Est. · `
+    // One short figure, so the decision after it still fits; the two full lines are behind the Router button.
+    const workers = l.review?.priced ? `~${gain(l.review.saved)} · ` : ''
     const callers = b.openCallers.length > 0 ? ` · ⚠ ${b.openCallers.length} Callers Open` : ''
 
     // One limit on one line: name, a long meter, the figure, and when it resets. Percent widths, so the columns line up row to row.
@@ -283,7 +293,7 @@ export const register: Register = (on, options) => {
       <Box flexDirection="row" {...(framed ? { borderStyle: 'round', borderDimColor: true, paddingX: 1 } : {})}>
         {Cell({ k: 'tests', cols: 4, grow: 1, first: true, label: 'Tests', value: tests ? tests.value : 'Not Run', color: tests?.color, sub: tests ? tests.sub : 'No Test Command Seen' })}
         {Cell({ k: 'reuse', cols: 4, grow: 1, label: 'Reuse', value: reuse !== undefined ? `${reuse}%` : 'N/A', sub: `${reuse !== undefined ? `${b.reused.length} Of ${b.created.length}` : 'No New Code'}${callers}` })}
-        {Cell({ k: 'router', cols: 4, grow: 1, label: 'Model Router', value: routerValue, color: router ? undefined : 'warning', sub: `${saved}${routerSub}` })}
+        {Cell({ k: 'router', cols: 4, grow: 1, label: 'Model Router', value: routerValue, color: router ? undefined : 'warning', sub: `${workers}${routerSub}` })}
         {Cell({ k: 'project', cols: 4, grow: 1, label: 'Project', value: pct !== undefined ? `${pct}%` : 'N/A', color: pct !== undefined ? 'success' : undefined, sub: l.tasks ? `${l.tasks.done} Of ${l.tasks.total} Done` : `No ${progressFile}` })}
       </Box>
     )

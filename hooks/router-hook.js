@@ -153,8 +153,9 @@ async function subagent(payload) {
   try {
     tail = io.readTail(io.auditLog(), 2 * 1024 * 1024, false);
   } catch (e) {}
-  const [decisionId, already] = audit.scanAuditTail(tail, sessionId, agentId);
-  if (already) return;
+  const [decisionId, recorded] = audit.scanAuditTail(tail, sessionId, agentId);
+  // A continued worker stops again: it gets a new row only when its totals grew, and the Board reads the newest one.
+  if (recorded && !(summed[0].tokens_out > (recorded.tokens_out || 0))) return;
   io.appendAudit(audit.buildStopRow(payload, summed, decisionId, io.now()), core.pyDumps, false);
 }
 

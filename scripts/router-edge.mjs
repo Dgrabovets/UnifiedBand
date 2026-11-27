@@ -118,6 +118,23 @@ const lines = file => (existsSync(file) ? readFileSync(file, 'utf8').split(/\r?\
   check('original plugin disabled: built-in router works', lines(join(cache, 'audit.jsonl')).some(l => l.includes('"o8"')))
 }
 
+// A worker's SubagentStop: one row, a second one only after the worker went on and its totals grew.
+{
+  const cache = join(work, 'c7')
+  const transcript = join(work, 'agent-w1.jsonl')
+  const reply = (id, output) => JSON.stringify({ type: 'assistant', message: { id, model: 'claude-sonnet-5-5', usage: { input_tokens: 1, output_tokens: output } } })
+  const stop = () => run('subagent', JSON.stringify({ agent_type: 'unified-band:router-sonnet', agent_id: 'w1', session_id: 's1', agent_transcript_path: transcript }), { CC_ROUTER_CACHE_DIR: cache })
+  const rows = () => lines(join(cache, 'audit.jsonl')).map(l => JSON.parse(l))
+  writeFileSync(transcript, reply('m1', 10))
+  const first = stop()
+  check('a finished worker is recorded', first.status === 0 && first.err === '' && rows().length === 1 && rows()[0].usage.tokens_out === 10)
+  writeFileSync(transcript, `${reply('m1', 10)}\n${reply('m2', 5)}`)
+  stop()
+  check('a continued worker gets a new row with its larger totals', rows().length === 2 && rows()[1].usage.tokens_out === 15)
+  stop()
+  check('a stop with nothing new adds no row', rows().length === 2)
+}
+
 // 6. Latency of one hook, cold, as Claude Code pays it on every prompt.
 {
   const cache = join(work, 'c6')

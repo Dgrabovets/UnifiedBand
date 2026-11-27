@@ -1,6 +1,7 @@
 // Checks the ledger repair end to end, the way hooks.json runs it, on a throwaway ledger and transcript:
 // a row without a model gets one, every other byte stays, and a session with no transcript stays empty.
-// Needs only Node. Usage: node scripts/repair-check.mjs
+// It also checks the prices: the import's table against the Board's, and what a reply's cache writes cost.
+// Needs only Node, 22.18 or later (it loads a .ts file). Usage: node scripts/repair-check.mjs
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -47,6 +48,17 @@ const again = spawnSync(process.execPath, [join(ROOT, 'hooks', 'ponytail-band-im
 check('a second run changes nothing', again.status === 0 && readFileSync(file, 'utf8') === expected, String(again.stdout).trim())
 const none = spawnSync(hook.command, { shell: true, env: { ...env, XDG_CONFIG_HOME: join(work, 'nothing') }, input: '{}', timeout: 5000 })
 check('a machine with no ledger is fine', none.status === 0)
+
+// The import prices sessions and the Board prices router workers: one table in two places, kept equal here.
+const { PRICES, HAIKU_55_LONG, replyCost } = createRequire(import.meta.url)(join(ROOT, 'hooks', 'ponytail-band-import.js'))
+const { LIST_PRICE, HAIKU_LONG } = await import('../hooks/band/board-stats.ts')
+const sorted = table => JSON.stringify(Object.entries(table).sort(([a], [b]) => a.localeCompare(b)))
+check('the Board and the import price the same models the same way', sorted(PRICES) === sorted(LIST_PRICE) && String(HAIKU_55_LONG) === String(HAIKU_LONG))
+// A reply of several passes: the split names only one pass, the total all of them. (4016 x $5 + 1M x $0.2) / 1M.
+const passes = { cache_creation_input_tokens: 4016, cache_read_input_tokens: 1e6, cache_creation: { ephemeral_5m_input_tokens: 1139, ephemeral_1h_input_tokens: 0 } }
+check('every cache write of a reply is priced', Math.abs(replyCost('claude-opus-5-5', passes) - 0.22008) < 1e-9, String(replyCost('claude-opus-5-5', passes)))
+const hour = { cache_creation_input_tokens: 1000, cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 1000 } }
+check('a 1-hour write keeps its own price', Math.abs(replyCost('claude-opus-5-5', hour) - 0.008) < 1e-9, String(replyCost('claude-opus-5-5', hour)))
 
 // shortcut: a folder still held by the last detached run is left to the system.
 try {

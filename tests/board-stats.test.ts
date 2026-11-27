@@ -38,8 +38,8 @@ test('five-hour windows group by reset time and flag the ones that hit 95%', () 
 test('router: matrix counts, stayed, up and down, and a /model after a routed prompt is a correction', () => {
   const rows = [
     { ts: T0, session: 's1', parent: 'sonnet', model: 'sonnet', outcome: 'silent', conf: 0.7 },
-    { ts: T0 + MIN, session: 's1', parent: 'sonnet', model: 'opus', outcome: 'routed', conf: 0.9 },
-    { ts: T0 + 30 * MIN, session: 's1', parent: 'sonnet', model: 'haiku', outcome: 'routed', conf: 0.8 },
+    { ts: T0 + MIN, session: 's1', parent: 'sonnet', model: 'opus', outcome: 'injected', conf: 0.9 },
+    { ts: T0 + 30 * MIN, session: 's1', parent: 'sonnet', model: 'haiku', outcome: 'injected', conf: 0.8 },
   ]
   const events = [{ t: 'model', ts: T0 + 3 * MIN, session: 's1', project: 'Steward' }]
   const r = S.routerStats(rows, events)
@@ -51,7 +51,7 @@ test('router: matrix counts, stayed, up and down, and a /model after a routed pr
 test('router report: corrections and time by routed or kept, workers, and tips', () => {
   const rows = [
     ...Array.from({ length: 10 }, (_, i) => ({ ts: T0 + i * 60 * MIN, session: 's1', parent: 'opus', model: 'opus', outcome: 'silent', tier: 'standard', reason: 'moderate scope, no complex signals', fanout: i === 0 })),
-    { ts: T0 + 11 * 60 * MIN, session: 's1', parent: 'opus', model: 'sonnet', outcome: 'routed', tier: 'standard', reason: 'x', fanout: false },
+    { ts: T0 + 11 * 60 * MIN, session: 's1', parent: 'opus', model: 'sonnet', outcome: 'injected', tier: 'standard', reason: 'x', fanout: false },
   ]
   const events = [
     ...Array.from({ length: 10 }, (_, i) => ({ t: 'turn', ts: T0 + i * 60 * MIN + MIN, session: 's1', ms: 4000 })),
