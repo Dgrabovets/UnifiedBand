@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/images/header.svg" alt="Unified Band" width="100%"></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/header.svg"><img src="docs/images/header-light.svg" alt="Unified Band" width="100%"></picture></p>
 
 <h1 align="center">Unified Band</h1>
 
@@ -9,9 +9,9 @@
 
 <p align="center">
   <a href="https://github.com/Dgrabovets/UnifiedBand/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Dgrabovets/UnifiedBand/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="Licence: MIT" src="https://img.shields.io/badge/licence-MIT-blue.svg"></a>
-  <img alt="Claude Code mod" src="https://img.shields.io/badge/Claude%20Code-mod-5fe08a">
-  <img alt="Data stays local" src="https://img.shields.io/badge/data-stays%20local-7c8cff">
+  <a href="LICENSE"><img alt="Licence: MIT" src="https://img.shields.io/badge/licence-MIT-4a5260.svg"></a>
+  <img alt="Claude Code mod" src="https://img.shields.io/badge/Claude%20Code-mod-4a5260">
+  <img alt="Data stays local" src="https://img.shields.io/badge/data-stays%20local-4a5260">
 </p>
 
 https://github.com/user-attachments/assets/c0e00c6c-d970-44a4-9bf1-ab6f844daaa5
